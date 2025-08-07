@@ -1,0 +1,244 @@
+import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { useFormik } from 'formik';
+import { useTranslation } from 'react-i18next';
+import { setAuthentication } from '@store/reducers/auth';
+import { setWindowClass } from '@app/utils/helpers';
+import { PfCheckbox, PfButton } from '@profabric/react-components';
+import axios from 'axios';
+import {
+  authLogin,
+} from '@app/utils/oidc-providers';
+import { Form, InputGroup } from 'react-bootstrap';
+import setGlobalHeader from '@app/components/helpers/SetGlobalHeader';
+import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+
+const imageUrl = "./img/theme/login-background.jpg";
+
+const Login = () => {
+  const [isAuthLoading, setAuthLoading] = useState(false);
+  const [apiUrl, setApiUrl] = useState<string>("");
+  const dispatch = useDispatch();
+
+  const navigate = useNavigate();
+  const [t] = useTranslation();
+  //old login 
+  // const login = async (email: string, password: string) => {
+  //   try {
+  //     setAuthLoading(true);
+  //     const response = await authLogin(email, password);
+  //     localStorage.setItem('token', response.accessToken);
+  //     localStorage.setItem("email", email)
+  //     setGlobalHeader()
+
+  //     dispatch(setAuthentication(response as any));
+  //     toast.success('Login is succeed!');
+  //     setAuthLoading(false);
+  //     // dispatch(loginUser(token));
+  //     navigate('/');
+  //   } catch (error: any) {
+  //     setAuthLoading(false);
+  //     toast.error(error.message || 'Failed');
+  //   }
+  // };
+
+  //new login with 
+
+
+
+
+
+  const login = async (email: string, password: string) => {
+    try {
+      setAuthLoading(true);
+      const response = await authLogin(email, password);
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem("email", email)
+      setGlobalHeader()
+      dispatch(setAuthentication(response as any));
+
+      axiosWithInterceptorInstance.get(`/user/current`)
+        .then(async response => {
+          const data = response.data
+          console.log("useri id :")
+          console.log(response.data.id)
+          localStorage.setItem("uid", response.data.id);
+          toast.success('Login is succeed!');
+          setAuthLoading(false);
+          // dispatch(loginUser(token));
+
+          //let apiUrl2 = ""
+          //${data?.ed_api_url}
+          axiosWithInterceptorInstance.get(`/custom-query/data-objects/?id=e48046c9-0b94-41d2-9ad4-206f1604b821`) // put this before rendering the menu
+            .then(async response => {
+
+              let apiUrl = `${response.data[0].ed_api_url}/health`
+              let apiCheckConnector = `${response.data[0].ed_api_url}/connector/dataService`
+              // Checking OneNet DSP API
+              try {
+                const response = axiosWithInterceptorInstance.get(apiUrl);
+
+                if ((await response).status === 200) {
+                  navigate('/');
+                  toast.success('OneNet DSP API reached successfully!!');
+                }
+              } catch (error: any) {
+                navigate('/connectorSettings');
+                toast.error('Error while reaching OneNet DSP API:', error)
+              }
+              // Checking connector
+              try {
+                const response = axiosWithInterceptorInstance.get(apiCheckConnector);
+
+                if ((await response).status === 200) {
+                  navigate('/');
+                  toast.success('Connector reached successfully!');
+                }
+              } catch (error: any) {
+                navigate('/connectorSettings');
+                toast.error('Error while reaching the connector:', error)
+              }
+            })
+            .catch(error => {
+              navigate('/connectorSettings');
+              console.error('Error fetching data:', error);
+            });
+
+
+
+          //200 e 
+
+        })
+        .catch(error => {
+          console.error('Error fetching media:', error);
+        });
+
+
+    } catch (error: any) {
+      setAuthLoading(false);
+      toast.error(error.message || 'Failed');
+    }
+  };
+
+  const { handleChange, values, handleSubmit, touched, errors } = useFormik({
+    initialValues: {
+      email: '',
+      password: '',
+    },
+    // validationSchema: Yup.object({
+    //   email: Yup.string().email('Invalid email address').required('Required'),
+    //   password: Yup.string()
+    //     .min(5, 'Must be 5 characters or more')
+    //     .max(30, 'Must be 30 characters or less')
+    //     .required('Required'),
+    // }),
+    onSubmit: (values) => {
+      login(values.email, values.password);
+    },
+  });
+
+  setWindowClass('hold-transition login-page');
+
+  return (
+    <div style={{ backgroundImage: `url(${imageUrl})`, display: 'flex', justifyContent: 'center', backgroundSize: 'cover', alignItems: 'center', backgroundPosition: 'center', width: '100%', height: '100%' }}>
+      <div className="login-box" >
+        <div className="card card-outline card-primary">
+          <div className="card-header text-center">
+            <Link to="/" className="h4">
+              <b>OneNet DSP</b>
+              <span> Connector</span>
+            </Link>
+          </div>
+          <div className="card-body">
+            <p className="login-box-msg" >{t<string>('login.label.signIn')}</p>
+            <form onSubmit={handleSubmit}>
+              <div className="mb-3">
+                <InputGroup className="mb-3">
+                  <Form.Control
+                    id="email"
+                    name="email"
+
+                    placeholder="Username"
+                    onChange={handleChange}
+                    value={values.email}
+                    isValid={touched.email && !errors.email}
+                    isInvalid={touched.email && !!errors.email}
+                  />
+                  {touched.email && errors.email ? (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.email}
+                    </Form.Control.Feedback>
+                  ) : (
+                    <InputGroup.Append>
+                      <InputGroup.Text>
+                        <i className="fas fa-user" />
+                      </InputGroup.Text>
+                    </InputGroup.Append>
+                  )}
+                </InputGroup>
+              </div>
+              <div className="mb-3">
+                <InputGroup className="mb-3">
+                  <Form.Control
+                    id="password"
+                    name="password"
+                    type="password"
+                    placeholder="Password"
+                    onChange={handleChange}
+                    value={values.password}
+                    isValid={touched.password && !errors.password}
+                    isInvalid={touched.password && !!errors.password}
+                  />
+                  {touched.password && errors.password ? (
+                    <Form.Control.Feedback type="invalid">
+                      {errors.password}
+                    </Form.Control.Feedback>
+                  ) : (
+                    <InputGroup.Append>
+                      <InputGroup.Text>
+                        <i className="fas fa-lock" />
+                      </InputGroup.Text>
+                    </InputGroup.Append>
+                  )}
+                </InputGroup>
+              </div>
+              <div className="row">
+                <div className="col-8">
+                  {/*  <PfCheckbox checked={false}>
+                  {t<string>('login.label.rememberMe')}
+                </PfCheckbox> */}
+                </div>
+                <div className="col-4">
+                  <PfButton
+                    block
+                    type="submit"
+                    loading={isAuthLoading}
+                  //disabled={isFacebookAuthLoading || isGoogleAuthLoading}
+                  >
+                    {t<string>('login.button.signIn.label')}
+                  </PfButton>
+                </div>
+              </div>
+            </form>
+            {/*   <p className="mb-1">
+            <Link to="/forgot-password">
+              {t<string>('login.label.forgotPass')}
+            </Link>
+          </p>
+          <p className="mb-0">
+            <Link to="/register" className="text-center">
+              {t<string>('login.label.registerNew')}
+            </Link>
+          </p> */}
+          </div>
+        </div>
+      </div></div>
+  );
+};
+
+export default Login;
+
+
+

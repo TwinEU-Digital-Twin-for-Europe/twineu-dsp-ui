@@ -1,0 +1,745 @@
+import React, { useState, useEffect } from 'react';
+import Button from 'react-bootstrap/Button';
+import Table from 'react-bootstrap/Table';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Container, Row, Col, Form, Modal, Spinner, Tooltip } from 'react-bootstrap';
+import Categories from '../modals/Categories';
+import Service from '../modals/Service';
+import BusinnesObject from '../modals/BusinnesObject';
+import { EditDataEntity } from '@app/components/helpers/Buttons';
+import { NewDataEntity } from '@app/components/helpers/Buttons';
+import Pagination from '@app/components/helpers/Pagination';
+import { Card, List } from 'reactstrap';
+import { format, set } from 'date-fns';
+import checkLevel from '@app/components/helpers/CheckLevel';
+import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import { ChangingOrder } from '@app/components/helpers/OrderingStateChange';
+import { toast } from 'react-toastify';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import { initializeUseSelector } from 'react-redux/es/hooks/useSelector';
+import { Item } from 'react-bootstrap/lib/Breadcrumb';
+const API_URL_FILTERS = "/datalist/left-grouping/data_provided";
+const API_URL_DATA = "/datalist/data_provided/page/";
+interface IFilterValues {
+  data_catalog_category_name: string;
+  id: string;
+  title: string;
+  cf_title: string;
+  created_on: string;
+  profile_selector: string;
+  description: string;
+  status: string;
+  subscriptions: string;
+}
+interface IFilter {
+  id: string | null;
+  code: string;
+  value: string;
+  count: number;
+  parrent: IFilter;
+  children: IFilter[];
+}
+interface ITableData {
+  data_catalog_category_name: string;
+  data_catalog_category_code: string;
+  id: string;
+  title: string;
+  cf_title: string;
+  created_on: string;
+  profile_selector: string;
+  description: string;
+  subscriptions: string;
+}
+
+const ProvideData: React.FC = () => {
+  const [deletingElements, setDeletingElements] = useState<[string, string][]>([]);
+  const [isEnableMultipleDeleting, setIsEnableMultipleDeleting] = useState(false);
+  const [checkedBoxes, setCheckedBoxes] = useState<boolean[]>([]);
+  const [isAllCheckedBox, setIsAllCheckedBox] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState<ITableData[]>([]);
+  const [filters, setFilters] = useState<IFilter[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  type ExpandedFiltersByLevel = { [level: number]: string | null };
+  const [expandedFiltersByLevel, setExpandedFiltersByLevel] = useState<ExpandedFiltersByLevel>({});
+  const [filterValues, setFilterValues] = useState<IFilterValues>({
+    data_catalog_category_name: "",
+    id: "",
+    title: "",
+    created_on: "",
+    profile_selector: "",
+    description: "",
+    status: "",
+    subscriptions: "",
+    cf_title: ""
+  });
+  const [modalStates, setModalStates] = useState({
+    categoriesModal: false,
+    serviceModal: false,
+    businnesObjectModal: false
+  });
+
+  type FilterValuesFromModals = {
+    category_id: ModalFilter;
+    service_id: ModalFilter;
+    business_object_id: ModalFilter;
+  }
+
+  const [filterValuesFromModals, setFilterValuesFromModals] = useState<FilterValuesFromModals>({
+    category_id: { name: "", id: "" },
+    service_id: { name: "", id: "" },
+    business_object_id: { name: "", id: "" },
+  });
+  const [columnToFilter, setcolumnToFilter] = useState({ name: '', value: '' });
+  const [categoryOrdering, setCategoryOrdering] = useState("");
+  const [titleOrdering, setTitleOrdering] = useState("");
+  const [cfNameOrdering, setCfNameOrdering] = useState("");
+  const [createdOnOrdering, setCreatedOnOrdering] = useState("");
+  const [pageSize, setPageSize] = useState(20);
+  function ChangingOrder_inside(stateToChange: any, columnToFilter: string) {
+    switch (columnToFilter) {
+      case "category": {
+        setCategoryOrdering(ChangingOrder(categoryOrdering))
+        setTitleOrdering("")
+        setCfNameOrdering("")
+        setCreatedOnOrdering("")
+        setcolumnToFilter(prevState => ({
+          ...prevState,
+          name: "data_catalog_category_name",
+          value: categoryOrdering
+        }));
+
+        break;
+      }
+      case "title": {
+        setTitleOrdering(ChangingOrder(titleOrdering))
+        setCategoryOrdering("")
+        setCfNameOrdering("")
+        setCreatedOnOrdering("")
+        setcolumnToFilter(prevState => ({
+          ...prevState,
+          name: "title",
+          value: titleOrdering
+        }));
+
+        break;
+      }
+      case "created_on": {
+        setCreatedOnOrdering(ChangingOrder(createdOnOrdering))
+        setCategoryOrdering("")
+        setCfNameOrdering("")
+        setTitleOrdering("")
+        setcolumnToFilter(prevState => ({
+          ...prevState,
+          name: "created_on",
+          value: createdOnOrdering
+        }));
+
+        break;
+      }
+      case "cf_title": {
+        setCfNameOrdering(ChangingOrder(cfNameOrdering))
+        setCreatedOnOrdering("")
+        setCategoryOrdering("")
+        setTitleOrdering("")
+        setcolumnToFilter(prevState => ({
+          ...prevState,
+          name: "cf_title",
+          value: cfNameOrdering
+        }));
+
+        break;
+      }
+
+
+    }
+  }
+
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    fetchData();
+  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilterValues({ ...filterValues, [e.target.name]: e.target.value });
+    setCurrentPage(1)
+  };
+
+  useEffect(() => {
+    let initCheckedBoxes = Array(data.length).fill(false)
+    setCheckedBoxes(initCheckedBoxes)
+  }, [data]);
+
+  useEffect(() => {
+    if (checkedBoxes.includes(true)) {
+      setIsEnableMultipleDeleting(true)
+    } else {
+      setIsEnableMultipleDeleting(false)
+    }
+    let deletingElements_ = [...deletingElements];
+    for (let x = 0; x < checkedBoxes.length; x++) {
+      if (checkedBoxes[x] === true) {
+        deletingElements_[x] = [data[x].id, data[x].cf_title];
+      } else {
+        deletingElements_[x] = ["", ""];
+      }
+      setDeletingElements(deletingElements_)
+    }
+  }, [checkedBoxes]);
+
+  useEffect(() => {
+    fetchData();
+  }, [expandedFiltersByLevel, filterValuesFromModals, currentPage]);
+
+  useEffect(() => {
+    fetchFilters();
+  }, []);
+
+  const fetchFilters = async () => {
+    try {
+      const response = await axiosWithInterceptorInstance.get<IFilter[]>(API_URL_FILTERS);
+      setFilters(response.data.filter(element => element.value !== null));
+    } catch (error) {
+      console.error('Error fetching filters:', error);
+    }
+  };
+
+  const generateFilterQuery = () => {
+    let query = '';
+    let index = 0;
+    const filterKeys: (keyof IFilterValues)[] = ['data_catalog_category_name', 'title', 'cf_title', 'created_on', 'profile_selector', 'description', 'status', 'subscriptions'];
+    filterKeys.forEach(key => {
+      if (filterValues[key]) {
+        if (index > 0) {
+          query += `&`;
+        }
+        let keyfix = "";
+        keyfix = key
+        if (key === "created_on") {
+          keyfix = "sqlf_6"
+        }
+
+
+        query += `${encodeURIComponent(keyfix)}=${encodeURIComponent(filterValues[key])}`;
+        index++;
+      }
+    });
+    for (let [key, value] of Object.entries(filterValuesFromModals)) {
+      if (value.id) {
+
+        if (key === "category_id") {
+          key = "data_catalog_category_id"
+        }
+        if (key === "service_id") {
+          key = "data_catalog_service_id"
+        }
+        if (key === "business_object_id") {
+          key = "data_catalog_business_object_id"
+        }
+
+        if (index > 0) {
+          query += `&`;
+
+        }
+        query += `${encodeURIComponent(key)}=${encodeURIComponent(value.id)}`;
+        index++;
+
+      }
+    }
+    return query;
+  };
+
+
+  const fetchData = async () => {
+    try {
+      let filterQuery = '';
+      let filter2Query = generateFilterQuery();
+      if (expandedFiltersByLevel[0]) {
+
+        filterQuery = `&${encodeURIComponent("category_grouping")}=${encodeURIComponent(expandedFiltersByLevel[0])}`;
+      }
+
+      if (expandedFiltersByLevel[1]) {
+
+        filterQuery = filterQuery + `&${encodeURIComponent("service_grouping")}=${encodeURIComponent(expandedFiltersByLevel[1])}`;
+      }
+      if (expandedFiltersByLevel[2]) {
+
+        filterQuery = filterQuery + `&${encodeURIComponent("business_object_grouping")}=${encodeURIComponent(expandedFiltersByLevel[2])}`;
+      }
+      if (expandedFiltersByLevel[3]) {
+
+        filterQuery = filterQuery + `&${encodeURIComponent("users_grouping")}=${encodeURIComponent(expandedFiltersByLevel[3])}`;
+      }
+
+      const response = await axiosWithInterceptorInstance.get<{ listContent: ITableData[], totalPages: number, pageSize: number }>(`${API_URL_DATA}${currentPage - 1}?&cf_type=data&${filter2Query}${filterQuery}&sel-sort-code=${columnToFilter.name}&sel-sort-order=${columnToFilter.value}`);
+      setData(response.data.listContent);
+      setTotalPages(response.data.totalPages);
+      setPageSize(response.data.pageSize)
+    } catch (error: unknown) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  const paginate = (pageNumber: number): void => setCurrentPage(pageNumber);
+
+
+  const toggleExpand = (filterKey: string, level: number, parrent: string) => {
+
+    if (checkLevel(filterKey, expandedFiltersByLevel, parrent)) {
+      clearActiveFilter()
+    }
+    setExpandedFiltersByLevel(prev => ({
+      ...prev,
+      [level]: prev[level] === filterKey ? null : filterKey
+    }));
+    setCurrentPage(1)
+  };
+
+  const renderButtonGroup = (filters: IFilter[], level = 0, parentKey = ''): JSX.Element[] => {
+    return filters.map((filter, index) => {
+      const filterKey = `${parentKey}${filter.code}-${filter.value}-${index}`;
+      return (
+        <div key={filterKey}>
+          <Button
+            variant="link"
+            onClick={() => toggleExpand(filter.value, level, filter?.parrent?.value)}
+          >
+            <div style={{ fontSize: '0.8rem', textAlign: "left" }}>
+              {expandedFiltersByLevel[level] === filter.value ? '-' : '+'} {filter.value}
+            </div>
+          </Button>
+          {expandedFiltersByLevel[level] === filter.value && filter.children && (
+            <div style={{ paddingLeft: '20px' }}>
+              {renderButtonGroup(filter.children, level + 1, filterKey)}
+            </div>
+          )}
+        </div>
+      );
+    });
+  };
+  const representHierarchy = () => {
+    let hierarchy = Object.values(expandedFiltersByLevel).join(" >> ");
+    return hierarchy;
+  };
+
+
+  const renderActiveFilter = () => {
+    return representHierarchy() && (
+      <div>
+
+        <p style={{ display: 'inline' }}>Active Filters: <br></br> <b>{representHierarchy()}</b> <div style={{ display: 'inline-flex', scale: "0.6", marginLeft: '5px' }}>
+          <Button variant="outline-danger" onClick={clearActiveFilter}> <i className="fas fa-trash" style={{ color: 'red' }}></i> </Button>
+        </div></p>
+
+      </div>
+    );
+  };
+
+  const clearActiveFilter = () => {
+    setExpandedFiltersByLevel([]);
+    setCurrentPage(1)
+  };
+  const cancelModalFilters = (modalName: string) => {
+    setFilterValuesFromModals({
+      ...filterValuesFromModals,
+      [modalName]: ""
+    });
+    setCurrentPage(1)
+  };
+
+  const handleOpenModal = (modalName: string) => {
+    setModalStates({ ...modalStates, [modalName]: true });
+  };
+
+  const handleCloseModal = (modalName: string) => {
+    setModalStates({ ...modalStates, [modalName]: false });
+  };
+  type ModalFilter = {
+    name: string;
+    id: string;
+  }
+  const handleModalDataChange = (modalName: string, value: ModalFilter) => {
+    setFilterValuesFromModals({ ...filterValuesFromModals, [modalName]: value });
+    setCurrentPage(1)
+  };
+
+  const [show, setShow] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
+
+  const handleClose = () => setShow(false);
+  const handleShow = (selectedId: string, selectedTitle: string) => {
+    setSelectedTitle(selectedTitle)
+    setSelectedId(selectedId)
+    setShow(true)
+  };
+  const handleCloseAll = () => setShowAll(false);
+  const handleShowAll = () => {
+    setShowAll(true)
+  };
+
+
+  const deletingMultipleElement = async () => {
+    try {
+      for (let i = 0; i < checkedBoxes.length; i++) {
+        if (checkedBoxes[i]) {
+          await DeleteDataEntity(data[i].id, false);
+        }
+      }
+    } catch {
+    }
+    setTimeout(() => window.location.reload(), 2500);
+    handleCloseAll()
+  };
+
+  const DeleteDataEntity = async (id: string | null, isSingleFile: boolean) => {
+    try {
+      setIsLoading(true);
+      let res = axiosWithInterceptorInstance.get(`/custom-query/data-objects/?id=e48046c9-0b94-41d2-9ad4-206f1604b821`)
+
+      let apiDataDeletion = `${(await res).data[0].ed_api_url}/provide-data/${id}`
+      let response = await axiosWithInterceptorInstance.delete<{ DeleteResponse: boolean }>(apiDataDeletion);
+
+      toast.success("The file has been successfully deleted")
+      if (isSingleFile === true) {
+        setTimeout(() => window.location.reload(), 2500);
+      }
+
+
+    } catch (error) {
+      console.log(error)
+      toast.error('Error while deleting the file')
+    } finally {
+      setIsLoading(false);
+    }
+
+    handleClose()
+  };
+
+  function changeCheckBoxAll(value: boolean) {
+    setIsAllCheckedBox(!isAllCheckedBox)
+
+    const checkedBoxesTmp = checkedBoxes.map((c) => {
+      return !isAllCheckedBox
+    });
+
+
+    setCheckedBoxes(checkedBoxesTmp);
+  }
+  function changeCheckBox(value: boolean, index: number, id: string, title: string) {
+    setIsAllCheckedBox(false);
+    let checkedBoxes_ = [...checkedBoxes]
+    checkedBoxes_[index] = value;
+    setCheckedBoxes(checkedBoxes_);
+
+  }
+  const renderTooltip = (props: any) => (
+    <Tooltip id="button-tooltip" {...props}>
+      Select all the data
+    </Tooltip>
+  );
+  return (
+    <Container fluid>
+      <div className='row'>
+
+        <div className='col'  >
+          <h2> <i className="fas fa-cloud-upload-alt nav-icon" style={{ paddingRight: "8px" }}> </i> <b>Data Provided</b></h2>
+          <h5>Navigate to your Data Provided</h5>
+        </div>
+
+        <div className="col" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", whiteSpace: "nowrap" }}>
+          <div className="content-container" style={{ display: "flex", gap: "10px" }}>
+
+            <Button
+              id="select-all-button"
+              variant="outline-light"
+              className="btn btn-danger"
+              onClick={() => handleShowAll()}
+              data-toggle="tooltip"
+              data-placement="top"
+              title="Delete the selected data"
+              disabled={!isEnableMultipleDeleting}
+            >
+              <i className="fas fa-trash"></i>
+            </Button>
+
+            <Button
+              className="btn btn-success"
+              onClick={() => NewDataEntity()}
+              data-toggle="tooltip"
+              data-placement="top"
+              title="Provide a new data"
+              style={{ height: "50%" }}
+            >
+              New Data <i className="fa fa-plus"></i>
+            </Button>
+
+          </div>
+        </div>
+      </div>
+      <Row style={{ paddingTop: "30px", flexWrap: "nowrap", display: "flex" }}>
+        <Col md={2} style={{ display: 'flex', flexDirection: 'column' }}>
+          <Card>
+            <h5 style={{ paddingLeft: "10px", paddingTop: "10px" }}><b>Offered Services Categorization</b></h5>
+            <h6 style={{ padding: "10px" }}>Navigate & Filter Data Offerings by Category, Service, Business Object & User categorization tree </h6>
+            {renderButtonGroup(filters)}
+            <div style={{ padding: "15px" }}>
+              {renderActiveFilter()}
+            </div>
+          </Card>
+          <Card>
+            <h5 style={{ paddingLeft: "10px", paddingTop: "10px" }}><b>Filters</b></h5>
+            <h6 style={{ padding: "10px" }}>Select & Refine Seach </h6>
+            <table className="table">
+              <tbody>
+                <tr>
+                  <td>
+                    <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                      <button onClick={() => handleOpenModal('categoriesModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-search"></i>
+                        Categories
+                      </button>
+                      <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.category_id.name} placeholder={filterValuesFromModals.category_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                      <button onClick={() => cancelModalFilters('category_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-trash"></i>
+
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                      <button onClick={() => handleOpenModal('serviceModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-search"></i>
+                        Service
+                      </button>
+                      <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.service_id.name} placeholder={filterValuesFromModals.service_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                      <button onClick={() => cancelModalFilters('service_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-trash"></i>
+
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                      <button onClick={() => handleOpenModal('businnesObjectModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-search"></i>
+                        Businnes object
+                      </button>
+                      <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.business_object_id.name} placeholder={filterValuesFromModals.business_object_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                      <button onClick={() => cancelModalFilters('business_object_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </Card>
+        </Col>
+        <Col >
+          <Form onSubmit={handleSubmit}>
+            <Table striped bordered hover>
+              <thead>
+
+                <tr>
+                  <th>#</th>
+                  <th></th>
+                  <th style={{ textAlign: "center", verticalAlign: "middle" }}>Category <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(categoryOrdering, "category")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
+                    {categoryOrdering === "desc" && <i className="fas fa-sort-up"></i>}{categoryOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!categoryOrdering && <i className="fas fa-sort"></i>}
+                  </button></th>
+
+                  <th style={{ textAlign: "center", verticalAlign: "middle" }}>Offered Service <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(cfNameOrdering, "cf_title")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
+                    {cfNameOrdering === "desc" && <i className="fas fa-sort-up"></i>}{cfNameOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!cfNameOrdering && <i className="fas fa-sort"></i>}
+                  </button></th>
+
+                  <th style={{ textAlign: "center", verticalAlign: "middle" }}>Title <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(titleOrdering, "title")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
+                    {titleOrdering === "desc" && <i className="fas fa-sort-up"></i>}{titleOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!titleOrdering && <i className="fas fa-sort"></i>}
+                  </button></th>
+                  <th style={{ textAlign: "center", verticalAlign: "middle" }}>Created On <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(createdOnOrdering, "created_on")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
+                    {createdOnOrdering === "desc" && <i className="fas fa-sort-up"></i>}{createdOnOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!createdOnOrdering && <i className="fas fa-sort"></i>}
+                  </button></th>
+                  <th>Description</th>
+
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ verticalAlign: "middle", display: "flex", justifyContent: "center", }}>
+                    <OverlayTrigger
+                      placement="right"
+                      delay={{ show: 250, hide: 400 }}
+                      overlay={renderTooltip}
+                    >
+                      <Form.Check
+                        type="checkbox"
+                        id={`checkbox-all`}
+                        checked={isAllCheckedBox}
+                        onChange={(e) => changeCheckBoxAll(e.target.checked)}
+                      />
+                    </OverlayTrigger>
+                  </td>
+
+                  <td></td>
+                  <td></td>
+                  <td><Form.Control
+                    type="text"
+                    name="cf_title"
+                    placeholder="Filter"
+                    value={filterValues.cf_title}
+                    onChange={handleInputChange}
+                  /></td>
+
+                  <td><Form.Control
+                    type="text"
+                    name="title"
+                    placeholder="Filter"
+                    value={filterValues.title}
+                    onChange={handleInputChange}
+                  /></td>
+
+                  <td><Form.Control
+                    type="text"
+                    name="created_on"
+                    placeholder="Filter"
+                    value={filterValues.created_on}
+                    onChange={handleInputChange}
+                  /></td>
+                  <td><Form.Control
+                    type="text"
+                    name="description"
+                    placeholder="Filter"
+                    value={filterValues.description}
+                    onChange={handleInputChange}
+                  /></td>
+                </tr>
+
+                {data.map((item, index) => (
+                  <tr key={index}>
+
+                    <th scope="row" style={{ alignContent: "center" }}>
+
+                      <div style={{ display: "flex", alignContent: "center", whiteSpace: "nowrap", gap: "8px" }}>
+                        {(((currentPage - 1)) * pageSize) + index + 1}
+
+                        <Form.Check
+                          type="checkbox"
+                          id={`checkbox-${index}`}
+                          style={{ alignContent: "center" }}
+                          checked={checkedBoxes[index]}
+                          onChange={(e) => changeCheckBox(e.target.checked, index, item.id, item.cf_title)}
+                        />
+                      </div>
+                    </th>
+
+                    <td>
+                      <div className='row flex-nowrap'>
+                        <Button variant="outline-light" className="btn btn-primary" onClick={() => EditDataEntity(item?.id)} data-toggle="tooltip" data-placement="top" title="Change the data provided">
+                          <i className="fas fa-pencil-alt"></i>
+                        </Button>
+                        <Button id="delete-button" variant="outline-light" className="btn btn-danger" onClick={() => handleShow(item.id, item.title)} data-toggle="tooltip" data-placement="top" title="Delete the selected data">
+                          <i className="fas fa-trash"></i>
+                        </Button>
+
+
+                      </div>
+                    </td>
+                    <td>{item.data_catalog_category_code + " - " + item.data_catalog_category_name}</td>
+                    <td>{item.cf_title}</td>
+                    <td>{item.title}</td>
+                    <td>{format(new Date(item.created_on), 'dd/MM/yyyy HH:mm')}</td>
+                    <td>{item.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Pagination totalPages={totalPages} paginate={paginate} currentPage={currentPage} />
+            </div>
+            {modalStates.categoriesModal && (
+              <Categories
+                show={modalStates.categoriesModal}
+                handleClose={() => handleCloseModal('categoriesModal')}
+                onModalDataChange={handleModalDataChange}
+              />
+            )}
+            {modalStates.serviceModal && (
+              <Service
+                show={modalStates.serviceModal}
+                handleClose={() => handleCloseModal('serviceModal')}
+                onModalDataChange={handleModalDataChange}
+              />
+            )}
+            {modalStates.businnesObjectModal && (
+              <BusinnesObject
+                show={modalStates.businnesObjectModal}
+                handleClose={() => handleCloseModal('businnesObjectModal')}
+                onModalDataChange={handleModalDataChange}
+              />
+            )}
+
+            <Button type="submit" style={{ display: 'none' }}>Invia</Button>
+
+          </Form>
+        </Col>
+      </Row>
+      <Modal
+        show={show}
+        onHide={handleClose}
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Deletion of data</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Please confirm the deletion of the selected data
+        </Modal.Body>
+        <Modal.Footer>
+          <Button id="close-button" variant="secondary" onClick={handleClose}>
+            Close
+          </Button>
+          {!isLoading && <Button id="confirm-button" variant="primary" onClick={() => DeleteDataEntity(selectedId, true)}>Confirm</Button>}
+          {isLoading && <Button id="confirm-button-loading" variant="primary" disabled> <Spinner animation="border" role="status" size='sm'> </Spinner></Button>}
+
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={showAll}
+        onHide={handleCloseAll}
+        backdrop="static"
+        keyboard={false}
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Deletion of data</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          Please confirm the deletion of the following data:
+          {deletingElements.filter((deletingElement) => deletingElement[0].length > 0).map(([id, title], i) => (
+            <li key={i}>
+              {id} with the title: {title}
+            </li>
+          ))}
+
+        </Modal.Body>
+
+        <Modal.Footer>
+          <Button id="close-button" variant="secondary" onClick={handleCloseAll}>
+            Close
+          </Button>
+          {!isLoading && <Button id="confirm-button" variant="primary" onClick={() => deletingMultipleElement()}>Confirm</Button>}
+          {isLoading && <Button id="confirm-button-loading" variant="primary" onClick={() => deletingMultipleElement()} disabled> <Spinner animation="border" role="status" size='sm'> </Spinner></Button>}
+
+        </Modal.Footer>
+      </Modal>
+    </Container>
+  );
+};
+
+export default ProvideData;
