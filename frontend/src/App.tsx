@@ -45,12 +45,42 @@ import {
 } from './utils/oidc-providers';
 import axios from 'axios';
 import setGlobalHeader from './components/helpers/SetGlobalHeader';
+//let appName = (window as any)["env"]["appName"]
+//let appName = ((window as any)["env"]["appName"] && (window as any)["env"]["appName"] !== "APP_NAME")? (window as any)["env"]["appName"]  : "Energy Data Space";
+
+
+
+
+/* 
+let appName = "Energy Data Space"
+if ((window as any)["env"]["appName"]){
+  console.log("entro qui per cambiare")
+  if ((window as any)["env"]["appName"] !== "APP_NAME"){
+    console.log("entro qui per cambiare2")
+    appName = (window as any)["env"]["appName"]
+  }
+}  */
+
+
+let appName = (window as any)["env"]["appName"]
+let variableCompare = "A PP_NAME"
+
+if (appName === variableCompare.replace(" ","") ){
+  appName = "Energy Data Space"
+}
+
+if (!(window as any)["env"]["appName"]){
+  appName = "Energy Data Space"
+}
+
+
 const App = () => {
   const windowSize = useWindowSize();
   const screenSize = useSelector((state: any) => state.ui.screenSize);
   const dispatch = useDispatch();
   const [isAppLoading, setIsAppLoading] = useState(true);
   axios.defaults.baseURL = (window as any)["env"]["apiUrl"];
+  
   const checkSession = async () => {
     try {
       let responses: any = await Promise.all([
@@ -72,9 +102,12 @@ const App = () => {
     checkSession();
     if (localStorage.getItem("token")){
       setGlobalHeader();
+      
     }
     
-  }, []);
+    document.title = `${appName} Connector`;
+    
+      }, []);
 
   useEffect(() => {
     const size = calculateWindowSize(windowSize.width);
@@ -157,3 +190,5 @@ const App = () => {
 };
 
 export default App;
+export { appName };
+

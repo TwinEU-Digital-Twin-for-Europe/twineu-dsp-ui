@@ -385,7 +385,7 @@ const ProvideData: React.FC = () => {
     try {
       for (let i = 0; i < checkedBoxes.length; i++) {
         if (checkedBoxes[i]) {
-          await DeleteDataEntity(data[i].id, false);
+          await DeleteDataEntity(data[i].id, false, data[i].cf_title);
         }
       }
     } catch {
@@ -394,7 +394,7 @@ const ProvideData: React.FC = () => {
     handleCloseAll()
   };
 
-  const DeleteDataEntity = async (id: string | null, isSingleFile: boolean) => {
+  const DeleteDataEntity = async (id: string | null, isSingleFile: boolean, title: String | null) => {
     try {
       setIsLoading(true);
       let res = axiosWithInterceptorInstance.get(`/custom-query/data-objects/?id=e48046c9-0b94-41d2-9ad4-206f1604b821`)
@@ -402,7 +402,11 @@ const ProvideData: React.FC = () => {
       let apiDataDeletion = `${(await res).data[0].ed_api_url}/provide-data/${id}`
       let response = await axiosWithInterceptorInstance.delete<{ DeleteResponse: boolean }>(apiDataDeletion);
 
-      toast.success("The file has been successfully deleted")
+      toast.success(
+        <div>
+          The file with the id <b>{id}</b> and the title <b>{title}</b> has been successfully deleted.
+        </div>
+      );
       if (isSingleFile === true) {
         setTimeout(() => window.location.reload(), 2500);
       }
@@ -410,7 +414,11 @@ const ProvideData: React.FC = () => {
 
     } catch (error) {
       console.log(error)
-      toast.error('Error while deleting the file')
+      toast.error(
+        <div>
+          Error while deleting the file with the id <b>{id}</b> and the title <b>{title}</b>
+        </div>
+      )
     } finally {
       setIsLoading(false);
     }
@@ -704,7 +712,7 @@ const ProvideData: React.FC = () => {
           <Button id="close-button" variant="secondary" onClick={handleClose}>
             Close
           </Button>
-          {!isLoading && <Button id="confirm-button" variant="primary" onClick={() => DeleteDataEntity(selectedId, true)}>Confirm</Button>}
+          {!isLoading && <Button id="confirm-button" variant="primary" onClick={() => DeleteDataEntity(selectedId, true, selectedTitle)}>Confirm</Button>}
           {isLoading && <Button id="confirm-button-loading" variant="primary" disabled> <Spinner animation="border" role="status" size='sm'> </Spinner></Button>}
 
         </Modal.Footer>

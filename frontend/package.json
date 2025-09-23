@@ -1,6 +1,6 @@
 {
   "name": "adminlte-3-react",
-  "version": "2.0",
+  "version": "2.0.2",
   "private": true,
   "proxy": "https://smart-energy.eng.it/api",
   "type": "module",
@@ -47,6 +47,7 @@
     "adminlte-3-react": "file:",
     "axios": "^1.6.7",
     "bootstrap": "^4.6.0",
+    "color-name": "^2.0.0",
     "cypress": "^13.6.6",
     "date-fns": "^3.3.1",
     "formik": "2.2.9",

@@ -14,6 +14,7 @@ import {
 import { Form, InputGroup } from 'react-bootstrap';
 import setGlobalHeader from '@app/components/helpers/SetGlobalHeader';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import { appName } from '@app/App';
 
 const imageUrl = "./img/theme/login-background.jpg";
 
@@ -21,7 +22,6 @@ const Login = () => {
   const [isAuthLoading, setAuthLoading] = useState(false);
   const [apiUrl, setApiUrl] = useState<string>("");
   const dispatch = useDispatch();
-
   const navigate = useNavigate();
   const [t] = useTranslation();
   //old login 
@@ -46,10 +46,6 @@ const Login = () => {
 
   //new login with 
 
-
-
-
-
   const login = async (email: string, password: string) => {
     try {
       setAuthLoading(true);
@@ -62,8 +58,7 @@ const Login = () => {
       axiosWithInterceptorInstance.get(`/user/current`)
         .then(async response => {
           const data = response.data
-          console.log("useri id :")
-          console.log(response.data.id)
+         
           localStorage.setItem("uid", response.data.id);
           toast.success('Login is succeed!');
           setAuthLoading(false);
@@ -81,19 +76,19 @@ const Login = () => {
                 const response = axiosWithInterceptorInstance.get(apiUrl);
 
                 if ((await response).status === 200) {
-                  navigate('/');
-                  toast.success('OneNet DSP API reached successfully!!');
+                  //navigate('/'); //This will redirect
+                  toast.success(`${appName} API reached successfully!!`); 
                 }
               } catch (error: any) {
                 navigate('/connectorSettings');
-                toast.error('Error while reaching OneNet DSP API:', error)
+                toast.error(`Error while reaching ${appName} API:`, error)
               }
               // Checking connector
               try {
                 const response = axiosWithInterceptorInstance.get(apiCheckConnector);
 
                 if ((await response).status === 200) {
-                  navigate('/');
+                  //navigate('/');
                   toast.success('Connector reached successfully!');
                 }
               } catch (error: any) {
@@ -140,14 +135,14 @@ const Login = () => {
   });
 
   setWindowClass('hold-transition login-page');
-
+ 
   return (
     <div style={{ backgroundImage: `url(${imageUrl})`, display: 'flex', justifyContent: 'center', backgroundSize: 'cover', alignItems: 'center', backgroundPosition: 'center', width: '100%', height: '100%' }}>
       <div className="login-box" >
         <div className="card card-outline card-primary">
           <div className="card-header text-center">
             <Link to="/" className="h4">
-              <b>OneNet DSP</b>
+              <b>{appName}</b>
               <span> Connector</span>
             </Link>
           </div>

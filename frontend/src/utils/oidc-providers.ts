@@ -4,15 +4,7 @@ import axios from 'axios';
 
 declare const FB: any;
 
-const GOOGLE_CONFIG: UserManagerSettings = {
-  authority: 'https://accounts.google.com',
-  client_id:
-    '533830427279-cspigijdu0g50c7imca5pvdbrcn2buaq.apps.googleusercontent.com',
-  client_secret: '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',
-  redirect_uri: `${window.location.protocol}//${window.location.host}/callback`,
-  scope: 'openid email profile',
-  loadUserInfo: true,
-};
+
 
 export const authLogin = async (email: string, password: string) => {
 
@@ -24,7 +16,7 @@ export const authLogin = async (email: string, password: string) => {
     });
     localStorage.setItem(
       'authentication',
-      JSON.stringify({ profile: { email: 'engTest@eng.it' } })
+      JSON.stringify({ profile: { email: email } })
     );
 
     return response.data; 

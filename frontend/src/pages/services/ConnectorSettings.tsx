@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
 import { checkConnectorST, checkLocalApiST } from '@app/components/helpers/CheckLocalapiAndConnector';
+import { appName } from '@app/App';
 
 interface ApiResponse {
     ecc_url: string;
@@ -74,7 +75,8 @@ const ConnectorSettings = () => {
             }
         } catch (error: any) {
             toast.error("Error" + error)
-            console.error('Error saving OneNet DSP API Url data: ', error);
+            
+            console.error(`Error while saving ${appName} API Url data:`, error);
         }
 
        /*  let bodyToSend = {
@@ -155,11 +157,11 @@ const ConnectorSettings = () => {
 
             <Card >
                 <h3 className="list-group-item-heading" style={{ padding: "10px 20px" }}> <i className="fas fa-desktop" style={{ paddingRight: "8px" }}></i> <b>Local Applications</b></h3>
-                <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>DSP True Connector Provider, Consumer & The OneNet DSP Api Must Be Installed On Your Premises By Your Network Administrator</h6>
-                <ListGroup variant="flush">
+                <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>DSP True Connector Provider, Consumer & The {appName} Api Must Be Installed On Your Premises By Your Network Administrator</h6>
+                <ListGroup variant="flush">     
 
                     <ListGroup.Item>
-                        <Label for="id" >OneNet DSP Api</Label>
+                        <Label for="id" >{appName} Api</Label>
                         <div className="row">
                             <div className="col-9">
                                 <Form.Control

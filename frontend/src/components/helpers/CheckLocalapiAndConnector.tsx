@@ -1,5 +1,6 @@
 import { toast } from "react-toastify";
 import axiosWithInterceptorInstance from "./AxiosConfig";
+import { appName } from "@app/App";
 interface ApiResponseLocalApi {
     ecc_url: string;
     id: string;
@@ -20,11 +21,10 @@ async function checkLocalApi(data: string) {
 
         if ((await response).status === 200) {
             //localStorage.setItem("isLocalApiReacheble", "true");
-            console.log('OneNet DSP API reached successfully!!');
         }
     } catch (error: any) {
         //localStorage.setItem("isLocalApiReacheble", "false");
-        toast.error('Error while reaching OneNet DSP API:', error)
+        toast.error(`Error while reaching ${appName} API:`, error)
     }
 }
 async function checkConnector(data: string) {
@@ -71,7 +71,7 @@ async function checkLocalApiST(data: string) {
 
         if ((await response).status === 200) {
             //localStorage.setItem("isLocalApiReacheble", "true");
-            toast.success('OneNet DSP API reached successfully!!');
+            toast.success(`${appName} API reached successfully!!`); 
         }
     } catch (error: any) {
         //localStorage.setItem("isLocalApiReacheble", "false");

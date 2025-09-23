@@ -84,7 +84,6 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       <ContentHeader title="Dashboard" />
-
       <section className="content">
         <div className="container-fluid">
           <div className="row">

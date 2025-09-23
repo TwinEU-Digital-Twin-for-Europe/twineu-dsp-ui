@@ -1,13 +1,14 @@
-import React, {useState, useEffect, useCallback} from 'react';
-import {Outlet} from 'react-router-dom';
-import {useDispatch, useSelector} from 'react-redux';
-import {toggleSidebarMenu} from '@app/store/reducers/ui';
-import {addWindowClass, removeWindowClass, sleep} from '@app/utils/helpers';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleSidebarMenu } from '@app/store/reducers/ui';
+import { addWindowClass, removeWindowClass, sleep } from '@app/utils/helpers';
 import ControlSidebar from '@app/modules/main/control-sidebar/ControlSidebar';
 import Header from '@app/modules/main/header/Header';
 import MenuSidebar from '@app/modules/main/menu-sidebar/MenuSidebar';
 import Footer from '@app/modules/main/footer/Footer';
-import {PfImage} from '@profabric/react-components';
+import { PfImage } from '@profabric/react-components';
+import { appName } from '@app/App';
 
 const Main = () => {
   const dispatch = useDispatch();
@@ -70,8 +71,10 @@ const Main = () => {
         <div className="preloader flex-column justify-content-center align-items-center">
           <PfImage
             className="animation__shake"
-            src="/img/twineu-logo.png"
-            alt="OneNet DSP Connector"
+            src="./img/theme/logo.png"
+
+            alt={`${appName} Connector`}
+
             height={60}
             width={60}
           />
@@ -80,7 +83,7 @@ const Main = () => {
     }
     return (
       <>
-        <Header  />
+        <Header />
 
         <MenuSidebar />
 
@@ -90,13 +93,13 @@ const Main = () => {
             <Outlet />
           </section>
         </div>
-        <Footer /> 
+        <Footer />
         {/* <ControlSidebar /> */}
         <div
           id="sidebar-overlay"
           role="presentation"
           onClick={handleToggleMenuSidebar}
-          onKeyDown={() => {}}
+          onKeyDown={() => { }}
         />
       </>
     );
