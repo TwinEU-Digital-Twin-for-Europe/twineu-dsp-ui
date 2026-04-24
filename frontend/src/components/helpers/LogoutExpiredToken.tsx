@@ -21,7 +21,7 @@ const LogoutExpiredToken = (errorValue: any) => {
         localStorage.removeItem('token');
         localStorage.removeItem('email');
         localStorage.removeItem('authentication');
-        window.location.href = '/login';
+        window.location.href = 'login';
         unsetGlobalHeader()
         
     }

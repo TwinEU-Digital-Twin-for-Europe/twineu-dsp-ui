@@ -175,7 +175,7 @@ const Register = () => {
           <div className="social-auth-links text-center">
             
           </div>
-          <Link to="/login" className="text-center">
+          <Link to="login" className="text-center">
             {t<string>('register.alreadyHave')}
           </Link>
         </div>

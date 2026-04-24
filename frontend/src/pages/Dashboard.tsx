@@ -2,7 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { ContentHeader, SmallBox } from '@app/components';
 import Inner from '@app/components/helpers/InnerHtml';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
-import packageJSON from  '../../package.json'; 
+import packageJSON from '../../package.json';
+import { useLocation, useNavigate } from 'react-router-dom';
+import checkApiAndConnectorFromDashboard from '@app/components/helpers/checkApiAndConnectorFromDashboard';
+
 interface DashboardData {
   id: string;
   createdOn: string;
@@ -56,9 +59,16 @@ const Dashboard: React.FC = () => {
     "/connectorSettings"
   ]
   const [infoCards, setInfoCards] = useState<any[]>([]);
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const isFromLogin = queryParams.get('isFromLogin');
+
   useEffect(() => {
-    axiosWithInterceptorInstance.get<DashboardData>('/dashboard/by-id?id=b9b1394b-425c-4c33-a132-e28c23df995a', {
+    if (isFromLogin==="true") {
+      checkApiAndConnectorFromDashboard(navigate)
+    }
+    axiosWithInterceptorInstance.get<DashboardData>('dashboard/by-id?id=b9b1394b-425c-4c33-a132-e28c23df995a', {
     })
       .then(response => {
         console.log("version" + packageJSON.version)
@@ -66,12 +76,12 @@ const Dashboard: React.FC = () => {
         const entityIds = dashboardAreaList.flatMap(area => area.dashboardItemList.map(item => item.entityId));
 
         return Promise.all(entityIds.map(entityId =>
-          axiosWithInterceptorInstance.get(`/info-card/by-id?id=${entityId}`, {
+          axiosWithInterceptorInstance.get(`info-card/by-id?id=${entityId}`, {
 
           })
         ));
       })
-      
+
       .then(results => {
         const cards = results.map(res => res.data);
         setInfoCards(cards);

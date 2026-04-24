@@ -89,9 +89,9 @@ const EditDataEntity = () => {
       let response = await axiosWithInterceptorInstance.delete<{ DeleteResponse: boolean }>(apiDataDeletion);
       toast.success("The file has been successfully deleted")
       if (type === "push") {
-        setTimeout(() => window.location.href = '/provideDatapush', 2500);
+        setTimeout(() => window.location.href = 'provideDatapush', 2500);
       } else {
-        setTimeout(() => window.location.href = '/provideData', 2500);
+        setTimeout(() => window.location.href = 'provideData', 2500);
       }
     } catch (error) {
       toast.error('Error while deleting the file')

@@ -6,8 +6,7 @@ import { useFormik } from 'formik';
 import { useTranslation } from 'react-i18next';
 import { setAuthentication } from '@store/reducers/auth';
 import { setWindowClass } from '@app/utils/helpers';
-import { PfCheckbox, PfButton } from '@profabric/react-components';
-import axios from 'axios';
+import { PfButton } from '@profabric/react-components';
 import {
   authLogin,
 } from '@app/utils/oidc-providers';
@@ -20,31 +19,10 @@ const imageUrl = "./img/theme/login-background.jpg";
 
 const Login = () => {
   const [isAuthLoading, setAuthLoading] = useState(false);
-  const [apiUrl, setApiUrl] = useState<string>("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [t] = useTranslation();
-  //old login 
-  // const login = async (email: string, password: string) => {
-  //   try {
-  //     setAuthLoading(true);
-  //     const response = await authLogin(email, password);
-  //     localStorage.setItem('token', response.accessToken);
-  //     localStorage.setItem("email", email)
-  //     setGlobalHeader()
 
-  //     dispatch(setAuthentication(response as any));
-  //     toast.success('Login is succeed!');
-  //     setAuthLoading(false);
-  //     // dispatch(loginUser(token));
-  //     navigate('/');
-  //   } catch (error: any) {
-  //     setAuthLoading(false);
-  //     toast.error(error.message || 'Failed');
-  //   }
-  // };
-
-  //new login with 
 
   const login = async (email: string, password: string) => {
     try {
@@ -56,55 +34,16 @@ const Login = () => {
       dispatch(setAuthentication(response as any));
 
       axiosWithInterceptorInstance.get(`/user/current`)
+
         .then(async response => {
           const data = response.data
-         
           localStorage.setItem("uid", response.data.id);
+          localStorage.setItem("username", response.data.username);
+
           toast.success('Login is succeed!');
           setAuthLoading(false);
           // dispatch(loginUser(token));
-
-          //let apiUrl2 = ""
-          //${data?.ed_api_url}
-          axiosWithInterceptorInstance.get(`/custom-query/data-objects/?id=e48046c9-0b94-41d2-9ad4-206f1604b821`) // put this before rendering the menu
-            .then(async response => {
-
-              let apiUrl = `${response.data[0].ed_api_url}/health`
-              let apiCheckConnector = `${response.data[0].ed_api_url}/connector/dataService`
-              // Checking OneNet DSP API
-              try {
-                const response = axiosWithInterceptorInstance.get(apiUrl);
-
-                if ((await response).status === 200) {
-                  //navigate('/'); //This will redirect
-                  toast.success(`${appName} API reached successfully!!`); 
-                }
-              } catch (error: any) {
-                navigate('/connectorSettings');
-                toast.error(`Error while reaching ${appName} API:`, error)
-              }
-              // Checking connector
-              try {
-                const response = axiosWithInterceptorInstance.get(apiCheckConnector);
-
-                if ((await response).status === 200) {
-                  //navigate('/');
-                  toast.success('Connector reached successfully!');
-                }
-              } catch (error: any) {
-                navigate('/connectorSettings');
-                toast.error('Error while reaching the connector:', error)
-              }
-            })
-            .catch(error => {
-              navigate('/connectorSettings');
-              console.error('Error fetching data:', error);
-            });
-
-
-
-          //200 e 
-
+          navigate('/dashboard?isFromLogin=true');
         })
         .catch(error => {
           console.error('Error fetching media:', error);
@@ -115,6 +54,7 @@ const Login = () => {
       setAuthLoading(false);
       toast.error(error.message || 'Failed');
     }
+
   };
 
   const { handleChange, values, handleSubmit, touched, errors } = useFormik({
@@ -135,7 +75,7 @@ const Login = () => {
   });
 
   setWindowClass('hold-transition login-page');
- 
+
   return (
     <div style={{ backgroundImage: `url(${imageUrl})`, display: 'flex', justifyContent: 'center', backgroundSize: 'cover', alignItems: 'center', backgroundPosition: 'center', width: '100%', height: '100%' }}>
       <div className="login-box" >

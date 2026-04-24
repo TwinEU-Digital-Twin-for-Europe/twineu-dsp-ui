@@ -1,6 +1,6 @@
 {
   "name": "adminlte-3-react",
-  "version": "2.0.2",
+  "version": "2.1.8",
   "private": true,
   "proxy": "https://smart-energy.eng.it/api",
   "type": "module",
@@ -30,6 +30,7 @@
     ]
   },
   "dependencies": {
+    "firebase": "^12.9.0",
     "@cypress/webpack-preprocessor": "^6.0.1",
     "@fortawesome/fontawesome-free": "^6.6.0",
     "@fortawesome/fontawesome-svg-core": "6.4.0",

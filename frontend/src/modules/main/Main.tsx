@@ -2,8 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleSidebarMenu } from '@app/store/reducers/ui';
-import { addWindowClass, removeWindowClass, sleep } from '@app/utils/helpers';
-import ControlSidebar from '@app/modules/main/control-sidebar/ControlSidebar';
+import { addWindowClass, removeWindowClass} from '@app/utils/helpers';
 import Header from '@app/modules/main/header/Header';
 import MenuSidebar from '@app/modules/main/menu-sidebar/MenuSidebar';
 import Footer from '@app/modules/main/footer/Footer';
@@ -71,7 +70,7 @@ const Main = () => {
         <div className="preloader flex-column justify-content-center align-items-center">
           <PfImage
             className="animation__shake"
-            src="./img/theme/logo.png"
+            src={`${(window as any)["env"]["basePath"]}/img/theme/logo.png`}
 
             alt={`${appName} Connector`}
 
@@ -83,7 +82,7 @@ const Main = () => {
     }
     return (
       <>
-        <Header />
+        <Header  />
 
         <MenuSidebar />
 

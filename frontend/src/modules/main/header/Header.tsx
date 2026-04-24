@@ -1,11 +1,9 @@
-import React, {useCallback} from 'react';
-import {Link} from 'react-router-dom';
-import {useTranslation} from 'react-i18next';
-import {useDispatch, useSelector} from 'react-redux';
-import {toggleControlSidebar, toggleSidebarMenu} from '@app/store/reducers/ui';
-import MessagesDropdown from '@app/modules/main/header/messages-dropdown/MessagesDropdown';
+import React, { useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleSidebarMenu } from '@app/store/reducers/ui';
 import NotificationsDropdown from '@app/modules/main/header/notifications-dropdown/NotificationsDropdown';
-import LanguagesDropdown from '@app/modules/main/header/languages-dropdown/LanguagesDropdown';
 import UserDropdown from '@app/modules/main/header/user-dropdown/UserDropdown';
 
 const Header = () => {
@@ -16,10 +14,6 @@ const Header = () => {
 
   const handleToggleMenuSidebar = () => {
     dispatch(toggleSidebarMenu());
-  };
-
-  const handleToggleControlSidebar = () => {
-    dispatch(toggleControlSidebar());
   };
 
   const getContainerClasses = useCallback(() => {
@@ -48,14 +42,14 @@ const Header = () => {
           </Link>
         </li>
         <li className="nav-item d-none d-sm-inline-block">
-         {/*  <Link to="/" className="nav-link">
+          {/*  <Link to="/" className="nav-link">
             {t<string>('header.label.contact')}
           </Link> */}
         </li>
       </ul>
       <ul className="navbar-nav ml-auto">
-       {/*  <MessagesDropdown />
-        <NotificationsDropdown /> */}
+        {/*  <MessagesDropdown /> */}
+        {((window as any)["env"]["isNotificationEnabled"]) && <NotificationsDropdown/>}
         {/* <LanguagesDropdown /> */}
         <UserDropdown />
         {/* <li className="nav-item">

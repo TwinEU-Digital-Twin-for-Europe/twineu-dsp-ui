@@ -5,6 +5,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
   mode: 'development',
   plugins: [react()],
   // plugins: [react(), basicSsl()], // basicSSl è una libreria che fa partire il FE in htpps 

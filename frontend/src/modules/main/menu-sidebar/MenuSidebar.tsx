@@ -19,7 +19,7 @@ export const MENU: IMenuItem[] = [
   {
     name: i18n.t('menusidebar.label.dashboard'),
     icon: 'fas fa-tachometer-alt nav-icon',
-    path: '/'
+    path: '/dashboard' 
   },
   {
     name: i18n.t('menusidebar.label.Catalog'),
@@ -127,7 +127,7 @@ const MenuSidebar = () => {
     <aside className={`main-sidebar elevation-4 ${sidebarSkin}`}>
       <Link to="/" className="brand-link">
         <StyledBrandImage
-          src="/img/theme/logo.png"
+          src={`${(window as any)["env"]["basePath"]}/img/theme/logo.png`}
           alt="AdminLTE Logo"
           width={33}
           height={33}
@@ -140,7 +140,7 @@ const MenuSidebar = () => {
           <div className="image">
             <StyledUserImage
              
-              fallbackSrc="/img/default-profile.png"
+              fallbackSrc={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
               alt="User"
               width={34}
               height={34}

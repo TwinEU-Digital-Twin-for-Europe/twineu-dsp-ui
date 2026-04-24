@@ -5,8 +5,13 @@ do
     value=$(echo $i | cut -d '=' -f 2-)
     
     value="${value//_/ }"
-    echo "Value without underscore=$value"
-    find /usr/share/nginx/html -type f -name '*.js' -exec sed -i "s|${key}|${value}|g" '{}' +
+
+    if [[ "$value" == "true" || "$value" == "false" ]]; then
+        find /usr/share/nginx/html -type f -name '*.js' -exec sed -i "s|\"${key}\"|${value}|g" '{}' +
+    else
+        find /usr/share/nginx/html -type f -name '*.js' -exec sed -i "s|${key}|${value}|g" '{}' +
+    fi
+    #find /usr/share/nginx/html -type f -name '*.js' -exec sed -i "s|${key}|${value}|g" '{}' +
 done
 
  

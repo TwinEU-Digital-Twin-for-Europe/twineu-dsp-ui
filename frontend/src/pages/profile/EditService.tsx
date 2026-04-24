@@ -6,6 +6,8 @@ import { useLocation } from 'react-router-dom';
 import React, { useState, useEffect, ChangeEvent } from 'react';
 import { removeObj } from '@app/components/helpers/RemoveOBJ';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import checkTopic from '@app/components/helpers/checkTopic';
+import { toast } from 'react-toastify';
 //modifica pasquale 
 //classe modificata solo nell'interfaccia per ricevere i nuovi dati 
 
@@ -21,7 +23,6 @@ interface Data_catalog_service {
   data_catalog_category_obj: Data_catalog_category;
 }
 
-
 interface Data_catalog_business_object {
   data_catalog_service_obj: Data_catalog_service;
   name: string;
@@ -32,6 +33,8 @@ interface User_1_1_obj {
 }
 
 interface Data_catalog_data_offerings {
+  updating_frequency_kafka: number;
+  topic_kafka: string;
   id: string;
   title: string;
   data_catalog_business_object_obj: Data_catalog_business_object;
@@ -55,6 +58,10 @@ interface Data_catalog_data_offerings {
   topic: string;
   updating_frequency: number;
   user_1_1_obj: User_1_1_obj;
+  push_security_type: string;
+  push_security_field1: string;
+  push_security_field2: string;
+  push_security_addingto: string;
 }
 
 
@@ -71,6 +78,8 @@ const EditService = () => {
   const [isLoading1, setIsLoading1] = useState(false);
   const [isLoading2, setIsLoading2] = useState(false);
   const [loggedUser, setLoggedUser] = useState(localStorage.getItem("uid") || "");
+  const [initialPassword, setInitialPassword] = useState("");
+  const [alreadySecurityAdvised, setAlreadySecurityAdvised] = useState(false);
   const formatDateFromData = (dateString: string): string => {
     if (!dateString) {
       return "";
@@ -82,9 +91,10 @@ const EditService = () => {
     const fetchData = async () => {
       try {
         const response = await axiosWithInterceptorInstance.get<ApiResponse>(`/dataset/my_offered_services/${id}`);
-
+        response.data.data_catalog_data_offerings_obj.topic_kafka = checkTopic(response.data.data_catalog_data_offerings_obj.topic_kafka, "Kafka")
+        response.data.data_catalog_data_offerings_obj.topic = checkTopic(response.data.data_catalog_data_offerings_obj.topic, "Nats")
         setData(response.data.data_catalog_data_offerings_obj);
-
+        setInitialPassword(response.data.data_catalog_data_offerings_obj.push_security_field2);
 
       } catch (error) {
         console.error('Error fetching data: ', error);
@@ -122,6 +132,12 @@ const EditService = () => {
 
   async function saveRequest(isStatusChanged: boolean) {
     setIsLoading(true);
+    if ((!data?.push_security_field1 || !data?.push_security_field2) && data?.push_security_type !== "NO-AUTH" && !alreadySecurityAdvised) {
+      toast.warning(`You have provided an empty password/value for ${data?.push_security_type} authentication, if you want to proceed please save it again`, { autoClose: false })
+      setAlreadySecurityAdvised(true)
+      setIsLoading(false)
+      return
+    }
     let state = data?.status
     if (isStatusChanged) {
       state = "disabled"
@@ -129,12 +145,26 @@ const EditService = () => {
       state = "active"
     }
     if (data) {
-      const updatedData = {
+      let updatedData = {
         ...data,
-        created_on: formatDate(data.created_on),
-        active_to: formatDate(data.active_to),
-        active_from: formatDate(data.active_from),
-        modified_on: formatDate(data.modified_on),
+      }
+      if (data?.push_security_field2 !== initialPassword && data.push_security_field2 !== "") {
+        toast.warning("The password has been changed. Let's encrypting the new password before saving the changes.");
+
+        const cryptedPassword = await axiosWithInterceptorInstance.get(`custom-query/data-objects/encrypt-password?password=${String(data.push_security_field2)}`)
+        console.log("Encrypted password response: ", cryptedPassword);
+        updatedData = {
+          ...updatedData,
+          push_security_field2: cryptedPassword.data[0].encrypted_password
+        };
+      }
+      console.log("Updated data before formatting dates and removing object: ", updatedData);
+      updatedData = {
+        ...updatedData,
+        created_on: formatDate(updatedData.created_on),
+        active_to: formatDate(updatedData.active_to),
+        active_from: formatDate(updatedData.active_from),
+        modified_on: formatDate(updatedData.modified_on),
         use_custom_semantics: null,
         status: state,
 
@@ -149,17 +179,17 @@ const EditService = () => {
         if (whoIsCalling === "catalog") {
           console.log(data)
           if (data.type === "push") {
-            window.location.href = '/catalog?type=push'
+            window.location.href = 'catalog?type=push'
           } else {
-            window.location.href = '/catalog'
+            window.location.href = 'catalog'
           }
 
         } else {
           console.log(data.type)
           if (data.type === "push") {
-            window.location.href = '/myOfferedServices?type=push'
+            window.location.href = 'myOfferedServices?type=push'
           } else {
-            window.location.href = '/myOfferedServices'
+            window.location.href = 'myOfferedServices'
           }
 
         }
@@ -246,7 +276,10 @@ const EditService = () => {
       };
     }
   };
-  const handleChange = (name: keyof Data_catalog_data_offerings, value: string) => {
+  const handleChange = (name: keyof Data_catalog_data_offerings, value: string | number) => {
+    if ((name === "topic_kafka" || name === "topic") && typeof value === "string") {
+      value = checkTopic(value, name === "topic_kafka" ? "Kafka" : "Nats")
+    }
     setData(prevData => {
       if (prevData === null) {
         return null;
@@ -257,6 +290,7 @@ const EditService = () => {
           [name]: value
         };
       }
+
       return prevData;
     });
   };
@@ -352,13 +386,13 @@ const EditService = () => {
               {!isLoading && loggedUser === data?.user_1_1_obj.id && <button className="btn btn-primary me-md-2" onClick={() => saveRequest(false)} style={{ marginRight: '10px' }}>
                 Save
               </button>}
-             
+
 
 
               {data?.status === "active" && loggedUser === data?.user_1_1_obj.id && !isLoading && <button className="btn btn-danger" onClick={() => disableOfferedService()} style={{ marginLeft: '10px' }}>
                 Disable offered Service
               </button>}
-              
+
 
               {data?.status === "disabled" && loggedUser === data?.user_1_1_obj.id && !isLoading && <button className="btn btn-success" onClick={() => enableOfferedService()} style={{ marginLeft: '10px' }}>
                 Enable offered Service
@@ -396,7 +430,7 @@ const EditService = () => {
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Offered Services</b></h3>
         <h6 style={{ paddingLeft: " 20px" }}>Select Offered Service For This Subscription Request</h6>
         <ListGroup variant="flush">
-          <ListGroup.Item><Label for="id">Businnes object</Label>
+          <ListGroup.Item><Label for="id">Business object</Label>
             <Input type="text" name="id" id="id" placeholder={data?.data_catalog_business_object_obj.name} disabled />
           </ListGroup.Item>
           <ListGroup.Item>
@@ -455,6 +489,73 @@ const EditService = () => {
           </ListGroup.Item>
         </ListGroup>
       </Card>
+      {data?.type === "push" && data?.push_uri && loggedUser === data?.user_1_1_obj.id && <Card >
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Authentication for Push Services Rest APi</b></h3>
+        <h6 style={{ paddingLeft: " 20px" }}>Setup the Authentication for the rest API</h6>
+        <ListGroup variant="flush">
+
+          <ListGroup.Item>
+            <Row form>
+
+              <Col md={6}>
+                <Label for="id">Type of Authentication</Label>
+                <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                  <Dropdown.Toggle id="push-auth-type" className="d-inline-flex align-items-center">
+                    <div className="value">{data.push_security_type}</div>
+                    {(data.push_security_type === null || data.push_security_type === "") && <div className="value">Please select the authentication type</div>}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "NO-AUTH")}>NO-AUTH</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "BASIC")}>BASIC</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "API-KEY")}>API-KEY</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Col>
+              {(data.push_security_type === "API-KEY" || data.push_security_type === "BASIC") && <Col md={6}>
+                <Label for="id">Adding to</Label>
+                <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                  <Dropdown.Toggle id="push-addingto" className="d-inline-flex align-items-center">
+                    <div className="value">{data.push_security_addingto}</div>
+                    {(data.push_security_addingto === null || data.push_security_addingto === "") && <div className="value">Please select the adding to parameter</div>}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => handleChange("push_security_addingto", "HEADER")}>HEADER</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_addingto", "QUERY-PARAMS")}>QUERY-PARAMS</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Col>}
+            </Row>
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <Row form>
+              {data.push_security_type === "BASIC" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Username">Username</Label>
+                  <Input type="text" name="Username" id="Username" placeholder={data?.push_security_field1} value={data?.push_security_field1} onChange={(e) => handleChange('push_security_field1', e.target.value)} />
+                </FormGroup>
+              </Col>}
+              {data.push_security_type === "API-KEY" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Key">Key</Label>
+                  <Input type="text" name="Key" id="Key" placeholder={data?.push_security_field1} value={data?.push_security_field1} onChange={(e) => handleChange('push_security_field1', e.target.value)} />
+                </FormGroup>
+              </Col>}
+              {data.push_security_type === "BASIC" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Password">Password</Label>
+                  <Input type="password" name="Password" id="Password" placeholder={"**************"} value={data?.push_security_field2} onChange={(e) => handleChange('push_security_field2', e.target.value)} />
+                </FormGroup>
+              </Col>}
+              {data.push_security_type === "API-KEY" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Value">Value</Label>
+                  <Input type="password" name="Value" id="Value" placeholder={"**************"} value={data?.push_security_field2} onChange={(e) => handleChange('push_security_field2', e.target.value)} />
+                </FormGroup>
+              </Col>}
+            </Row>
+          </ListGroup.Item>
+        </ListGroup>
+      </Card>}
 
       <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Date Restrictions</b></h3>
@@ -553,7 +654,7 @@ const EditService = () => {
 
         </ListGroup>
       </Card>
-      <Card >
+      {(window as any)["env"]["Nats"] && <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>NATS parameters</b></h3>
         <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the NATS plugin</h6>
         <ListGroup variant="flush">
@@ -561,12 +662,12 @@ const EditService = () => {
             <Row form>
               <Col md={6}>
                 {loggedUser === data?.user_1_1_obj.id && <FormGroup>
-                  <Label for="serviceCode">Topic</Label>
+                  <Label for="serviceCode">NATS topic</Label>
 
                   <Input type="text" name="topic" id="topic" value={data?.topic} placeholder="Enter NATS topic" onChange={(e) => handleChange('topic', e.target.value)} />
                 </FormGroup>}
                 {loggedUser !== data?.user_1_1_obj.id && <FormGroup>
-                  <Label for="serviceCode">Topic</Label>
+                  <Label for="serviceCode">NATS topic</Label>
 
                   <Input disabled type="text" name="topic" id="topic" value={data?.topic} placeholder="Enter NATS topic" onChange={(e) => handleChange('topic', e.target.value)} />
                 </FormGroup>}
@@ -586,9 +687,41 @@ const EditService = () => {
           </ListGroup.Item>
         </ListGroup>
 
-      </Card>
+      </Card>}
+      {(window as any)["env"]["Kafka"] && <Card >
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Kafka parameters</b></h3>
+        <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the Kafka plugin</h6>
+        <ListGroup variant="flush">
+          <ListGroup.Item>
+            <Row form>
+              <Col md={6}>
+                {loggedUser === data?.user_1_1_obj.id && <FormGroup>
+                  <Label for="serviceCode">Kafka topic</Label>
 
+                  <Input type="text" name="topic_kafka" id="topic_kafka" value={data?.topic_kafka} placeholder="Enter Kafka topic" onChange={(e) => handleChange('topic_kafka', e.target.value)} />
+                </FormGroup>}
+                {loggedUser !== data?.user_1_1_obj.id && <FormGroup>
+                  <Label for="serviceCode">Kafka Topic</Label>
 
+                  <Input disabled type="text" name="topic_kafka" id="topic_kafka" value={data?.topic_kafka} placeholder="Enter Kafka topic" onChange={(e) => handleChange('topic_kafka', e.target.value)} />
+                </FormGroup>}
+
+              </Col>
+              <Col md={6}>
+                {loggedUser === data?.user_1_1_obj.id && <FormGroup>
+                  <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                  <Input type="text" name="updating_frequency_kafka" id="updating_frequency_kafka" value={data?.updating_frequency_kafka} placeholder="Enter updating frequency" onChange={(e) => handleChange('updating_frequency_kafka', e.target.value)} />
+                </FormGroup>}
+                {loggedUser !== data?.user_1_1_obj.id && <FormGroup>
+                  <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                  <Input disabled type="text" name="updating_frequency_kafka" id="updating_frequency_kafka" value={data?.updating_frequency_kafka} placeholder="Enter updating frequency" onChange={(e) => handleChange('updating_frequency_kafka', e.target.value)} />
+                </FormGroup>}
+              </Col>
+            </Row>
+          </ListGroup.Item>
+        </ListGroup>
+
+      </Card>}
       <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Semantic Definition</b></h3>
         <ListGroup variant="flush">
@@ -690,7 +823,7 @@ const EditService = () => {
 
           </ListGroup.Item>
 
-         {loggedUser === data?.user_1_1_obj.id && <ListGroup.Item >
+          {loggedUser === data?.user_1_1_obj.id && <ListGroup.Item >
             <Dropdown drop='up'>
               <Dropdown.Toggle id="dropdown-basic" >
                 Profile Format: {data?.profile_selector}
@@ -707,7 +840,7 @@ const EditService = () => {
 
           </ListGroup.Item>}
 
-          {loggedUser !== data?.user_1_1_obj.id &&<ListGroup.Item disabled>
+          {loggedUser !== data?.user_1_1_obj.id && <ListGroup.Item disabled>
             <Dropdown drop='up'>
               <Dropdown.Toggle id="dropdown-basic" >
                 Profile Format: {data?.profile_selector}

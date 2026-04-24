@@ -7,6 +7,7 @@ import React, { useState,  ChangeEvent } from 'react';
 import BusinnesObject from '../modals/BusinnesObject_CreateService';
 import { toast } from 'react-toastify';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import checkTopic from '@app/components/helpers/checkTopic';
 interface User_1_1 {
   id: string;
   email: string;
@@ -116,6 +117,8 @@ interface DataCatalogDataOfferings {
   status: string;
   topic: string;
   updating_frequency: number;
+  topic_kafka:string;
+  updating_frequency_kafka:number;
 }
 
 interface ApiResponse {
@@ -224,7 +227,9 @@ const CreateDataService = () => {
     active_to: buildDefaultActiveTo(),
     active_from: new Date().toISOString(),
     topic: "",
-    updating_frequency: 60
+    topic_kafka:"",
+    updating_frequency: 60,
+    updating_frequency_kafka:60
   };
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -261,7 +266,7 @@ const CreateDataService = () => {
     };
     try {
       const response = await axiosWithInterceptorInstance.post('/dataset/my_offered_services', requestBody);
-      window.location.href = '/myOfferedServices?type=data'
+      window.location.href = 'myOfferedServices?type=data'
     } catch (error) {
       console.error('Error saving data: ', error);
     }
@@ -388,19 +393,24 @@ const CreateDataService = () => {
     }
   };
 
-  const handleChange = (name: keyof DataCatalogDataOfferings, value: string) => {
-    setData(prevData => {
-      if (prevData === null) {
-        return null;
-      }
-      if (name in prevData) {
-        return {
-          ...prevData,
-          [name]: value
-        };
-      }
-      return prevData;
-    });
+  const handleChange = (name: keyof DataCatalogDataOfferings, value: string|number) => {
+     if ((String(name) === "topic_kafka"|| String(name) === "topic") && typeof value ==="string" ){
+      value=checkTopic(value, String(name) === "topic_kafka" ? "Kafka" : "Nats")
+     }
+        setData(prevData => {
+            if (prevData === null) {
+                return null;
+            }
+            if (name in prevData) {
+                return {
+                    ...prevData,
+                    [name]: value
+                };
+            }
+
+            return prevData;
+        });
+    
   };
 
   return (
@@ -437,13 +447,13 @@ const CreateDataService = () => {
       </Card>
 
       <Card >
-        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Businnes object*</b></h3>
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Business object*</b></h3>
         <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select Business Object For This Data Offering</h6>
         <ListGroup variant="flush">
           <ListGroup.Item>
             <button onClick={() => handleOpenModal('BOModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
               <i className="fas fa-search nav-io"></i>
-              Businnes object:  {!cardElements.businnesObjectName && "please select one option"} {cardElements.businnesObjectName}
+              Business object:  {!cardElements.businnesObjectName && "please select one option"} {cardElements.businnesObjectName}
             </button>
           </ListGroup.Item>
           <ListGroup.Item>
@@ -533,7 +543,7 @@ const CreateDataService = () => {
 
         </ListGroup>
       </Card>
-      <Card >
+     {(window as any)["env"]["Nats"] && <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>NATS parameters</b></h3>
         <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the NATS plugin</h6>
         <ListGroup variant="flush">
@@ -541,29 +551,44 @@ const CreateDataService = () => {
             <Row form>
               <Col md={6}>
                 <FormGroup>
-                  <Label for="serviceCode">Topic</Label>
-                  <Input type="text" name="topic" id="topic" value={data?.topic} onChange={(e) => handleChange('topic', e.target.value)} />
+                  <Label for="serviceCode">NATS topic</Label>
+                  <Input type="text" name="topic" id="topic" placeholder="Enter NATS topic" value={data?.topic} onChange={(e) => handleChange('topic', e.target.value)} />
                 </FormGroup>
               </Col>
               <Col md={6}>
                 <FormGroup>
                   <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
-                  <Input type="text" name="updating_frequency" id="updating_frequency" value={data?.updating_frequency} onChange={(e) => handleChange('updating_frequency', e.target.value)} />
+                  <Input type="text" name="updating_frequency" id="updating_frequency" placeholder="Enter updating frequency" value={data?.updating_frequency} onChange={(e) => handleChange('updating_frequency', e.target.value)} />
                 </FormGroup>
               </Col>
             </Row>
           </ListGroup.Item>
         </ListGroup>
-        {/* <ListGroup variant="flush">
-            <ListGroup.Item><Label for="title">Topic</Label>
-            <Input type="text" name="title" id="title" value={data?.topic} onChange={(e) => handleChange('topic', e.target.value)} />
+      </Card>}
+      {(window as any)["env"]["Kafka"] &&<Card >
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Kafka parameters</b></h3>
+        <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the Kafka plugin</h6>
+        <ListGroup variant="flush">
+          <ListGroup.Item>
+            <Row form>
+              <Col md={6}>
+                <FormGroup>
+                  <Label for="serviceCode">Kafka topic</Label>
+                  <Input type="text" name="topic_kafka" id="topic_kafka"  placeholder="Enter Kafka topic"  value={data?.topic_kafka} onChange={(e) => handleChange('topic_kafka', e.target.value)} />
+                </FormGroup>
+              </Col>
+              <Col md={6}>
+                <FormGroup>
+                  <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                  <Input type="text" name="updating_frequency_kafka" id="updating_frequency_kafka" placeholder="Enter updating frequency" value={data?.updating_frequency_kafka} onChange={(e) => handleChange('updating_frequency_kafka', e.target.value)} />
+                </FormGroup>
+              </Col>
+            </Row>
           </ListGroup.Item>
+        </ListGroup>
+        
+      </Card>}
 
-          <ListGroup.Item><Label for="title">Updating Frequency</Label>
-            <Input type="text" name="title" id="title" value={data?.updating_frequency} onChange={(e) => handleChange('updating_frequency', e.target.value)} />
-          </ListGroup.Item>
-        </ListGroup> */}
-      </Card>
 
       <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Semantic Definition</b> </h3>

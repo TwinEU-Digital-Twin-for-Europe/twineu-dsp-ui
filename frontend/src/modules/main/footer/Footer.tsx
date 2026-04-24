@@ -5,8 +5,8 @@ import packageJSON from '../../../../package.json';
 
 const Footer = () => {
   const [t] = useTranslation();
-const EngineeringLogo =  "./img/ENG24-LOGO-FULL-DARK.png";
-const OneNetLogo =  "./img/OneNet.svg";
+const EngineeringLogo =  `${(window as any)["env"]["basePath"]}/img/ENG24-LOGO-FULL-DARK.png`;     
+const OneNetLogo =  `${(window as any)["env"]["basePath"]}/img/OneNet.svg`;
   return (
     <footer className="main-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}> 
       <strong>

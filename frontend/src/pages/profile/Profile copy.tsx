@@ -35,7 +35,7 @@ const Profile = () => {
                       width={100}
                       height={100}
                       rounded
-                      src="/img/default-profile.png"
+                      src= {`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
                       alt="User profile"
                     />
                   </div>

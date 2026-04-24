@@ -8,8 +8,6 @@ import { RetrieveLocalApi } from '@app/components/helpers/RetrieveLocalApi';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
 import { toast } from 'react-toastify';
 import { checkLocalApiAndConnector } from '@app/components/helpers/CheckLocalapiAndConnector';
-import { Modal, } from 'react-bootstrap';
-import Button from 'react-bootstrap/Button';
 
 interface Data_catalog_category {
     code: string;
@@ -29,8 +27,6 @@ interface Data_catalog_business_object {
     data_catalog_service_obj: Data_catalog_service;
     name: string;
     code: string;
-
-
 }
 interface User_offering {
     ecc_url: string;
@@ -41,7 +37,6 @@ interface Onenet_consumer {
     broker_url: string;
     data_app_url: string;
     ecc_url: string;
-
 }
 interface Data_catalog_data_requests {
     onenet_consumer_obj: Onenet_consumer;
@@ -68,18 +63,15 @@ interface Provider_obj {
     id: string,
     provider_fiware_url: string,
     ed_api_url: string
-
 }
 
 interface Company_obj {
     name: string;
 }
 
-
 interface User_obj {
     company_obj: Company_obj;
     username: string;
-
 }
 
 interface Data_send {
@@ -100,33 +92,18 @@ interface Data_send {
 interface ApiResponse {
     data_send_obj: Data_send;
 }
-interface ApiResponseLocalApi {
-    ecc_url: string;
-    id: string;
-    email: string;
-    username: string;
-    name: string;
-    broker_url: string;
-    ed_api_url: string;
-    data_app_url: string;
-}
 
 const EditDataEntity = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const id = queryParams.get('id');
     const [data, setData] = useState<Data_send>();
-    //const [data2, setData2] = useState<Data_send>();
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-
                 const response = await axiosWithInterceptorInstance.get<ApiResponse>(`/dataset/data_provided/${id}`);
-                console.log("dati da consumare get");
-                console.log(response.data.data_send_obj);
-                console.log(response.data);
                 setData(response.data.data_send_obj);
             } catch (error) {
                 console.error('Error fetching data: ', error);
@@ -184,22 +161,15 @@ const EditDataEntity = () => {
         } finally {
             setIsLoading(false);
         }
-
     }
-
-   
-
-
     return (
         <Container fluid>
             <div className='row '>
                 <h2> <i className="fas fa-external-link-alt nav-icon" style={{ paddingRight: "8px" }}> </i> <b>Data Entity</b></h2>
-               
             </div>
             <h5>Consume Data Entity</h5>
             <Card >
                 <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Basic information</b></h3>
-
                 <ListGroup variant="flush">
                     <ListGroup.Item><Label for="id">ID</Label>
                         <Input type="text" name="id" id="id" value={data?.id} /></ListGroup.Item>
@@ -218,8 +188,6 @@ const EditDataEntity = () => {
                                 />
                             </div>
                             <div className='col-2'>
-
-
                                 {!isLoading && <button className="btn btn-primary" onClick={() => downloadFile()}>
                                     Download
                                 </button>}
@@ -228,8 +196,6 @@ const EditDataEntity = () => {
                                     <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                     Downloading...
                                 </button>}
-
-
                             </div>
                         </div>}
                     </ListGroup.Item>
@@ -237,15 +203,12 @@ const EditDataEntity = () => {
             </Card>
             <Card >
                 <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Assigned To Data Offering</b></h3>
-
-
                 <ListGroup variant="flush">
                     <ListGroup.Item><Label for="id">Data Offering</Label>
                         <Input type="text" name="id" id="id" value={data?.data_catalog_data_offerings_id} /></ListGroup.Item>
 
                     <ListGroup.Item><Label for="id">Profile Format</Label>
                         <Input type="text" name="id" id="id" value={data?.data_catalog_data_offerings_obj.profile_selector} /></ListGroup.Item>
-
                     <ListGroup.Item><Label for="title">Profile Description</Label>
                         <Input type="text" name="title" id="title" value={data?.data_catalog_data_offerings_obj.profile_description} />
                     </ListGroup.Item>
@@ -253,14 +216,12 @@ const EditDataEntity = () => {
                         <Input type="text" name="title" id="title" value={data?.user_obj.company_obj.name + "  " + data?.user_obj.username} />
                     </ListGroup.Item>}
                 </ListGroup>
-
                 <div className='row' >
                     <div className='col' >
                         <ListGroup.Item style={{ border: 'none', boxShadow: 'none' }} ><Label for="title">Business Object Code</Label>
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.code}
-
                             /></ListGroup.Item>
                     </div>
                     <div className='col'>
@@ -268,7 +229,6 @@ const EditDataEntity = () => {
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.name}
-
                             /></ListGroup.Item>
                     </div>
                 </div>
@@ -278,7 +238,6 @@ const EditDataEntity = () => {
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.code}
-
                             /></ListGroup.Item>
                     </div>
                     <div className='col'>
@@ -286,7 +245,6 @@ const EditDataEntity = () => {
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.name}
-
                             /></ListGroup.Item>
                     </div>
                 </div>
@@ -296,7 +254,6 @@ const EditDataEntity = () => {
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.code}
-
                             /></ListGroup.Item>
                     </div>
                     <div className='col'>
@@ -304,18 +261,10 @@ const EditDataEntity = () => {
                             <Form.Control
                                 type="text"
                                 value={data?.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.name}
-
                             /></ListGroup.Item>
                     </div>
                 </div>
-
-
             </Card>
-
-
-
-
-
         </Container>
     );
 };

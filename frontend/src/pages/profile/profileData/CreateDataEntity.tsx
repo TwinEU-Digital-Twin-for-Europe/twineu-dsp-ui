@@ -120,17 +120,11 @@ const CreateDataEntity = () => {
     setIsLoading(true);
     const requestBody = data;
     try {
-      console.log((apiRetrived.ed_api_url))
       const savingCall = await axiosWithInterceptorInstance.post(`${apiRetrived.ed_api_url}/provide-data`, requestBody);
-      console.log()
-
-
-      console.log("savingCall")
-      console.log(savingCall)
-      window.location.href = '/provideData'
+      window.location.href = 'provideData'
     } catch (error) {
       console.error('Error saving data: ', error);
-      toast.error('Error saving data, please also check the connector settings');
+      toast.error('Error while downloading data, please also check the connector settings');
     } finally {
       setIsLoading(false);
     }

@@ -1,4 +1,4 @@
-import { Container,Label, Input } from 'reactstrap';
+import { Container, Label, Input } from 'reactstrap';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
@@ -9,72 +9,26 @@ import { RetrieveLocalApi } from '@app/components/helpers/RetrieveLocalApi';
 import { toast } from 'react-toastify';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
 import { checkLocalApiAndConnector } from '@app/components/helpers/CheckLocalapiAndConnector';
-interface Provider {
-  id: string;
-  broker_url: string;
-  ecc_url: string;
-  provider_fiware_url: string;
-  ed_api_url: string
+
+interface Data_send { // New interface for DSP
+  title: string,
+  description: string,
+  filename: string,
+  file: string,
+  fileSize: number,
+  data_offering_id: string,
+  code: string,
+  push_security_type: string,
+  push_security_addingto: string,
+  push_security_field1: string,
+  push_security_field2: string,
 }
 
-/* interface Data_send {
-  created_by: string;
-  fileName: string;
-  data_catalog_data_offerings_id: string;
-  description: string;
-  title: string;
-  fileSize: number;
-  push_uri:string;
-  message: string;
-  "sub-entities": {
-    provider: Provider;
-  };
-
-} */
-  interface Data_send { // New interface for DSP
-    title: string,
-    description: string,
-    filename: string,
-    file: string,
-    fileSize: number,
-    data_offering_id: string,
-    code: string,
-  }
-
-interface ApiResponse {
-  data_send: Data_send;
-}
 const CreateDataEntityPush = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [modalStates, setModalStates] = useState({
     DataOfferingModal: false
   });
-  const [filterValuesFromModals, setFilterValuesFromModals] = useState({
-
-    data_offering: ""
-
-  });
-
- /*  const datasend: Data_send = {
-    fileName: "",
-    data_catalog_data_offerings_id: "",
-    description: "",
-    title: "",
-    fileSize: 0,
-    message: "",
-    push_uri:"",
-    "sub-entities": {
-      provider: {
-        id: "",
-        broker_url: "",
-        ecc_url: "",
-        provider_fiware_url: "",
-        ed_api_url: ''
-
-      },
-    },
-    created_by: ''
-  }; */
 
   const datasend: Data_send = {
     title: "",
@@ -83,7 +37,11 @@ const CreateDataEntityPush = () => {
     file: "",
     fileSize: 0,
     data_offering_id: "",
-    code: ""
+    code: "",
+    push_security_type: "",
+    push_security_addingto: "",
+    push_security_field1: "",
+    push_security_field2: "",
   };
 
   const [cardElements, setCardElements] = useState({
@@ -96,24 +54,22 @@ const CreateDataEntityPush = () => {
     serviceName: "",
     categoryCode: "",
     categoryName: "",
-    push_uri:"",
+    push_uri: "",
 
   });
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const id = queryParams.get('id');
-  const [data, setData] = useState<Data_send >(datasend);
+  const [data, setData] = useState<Data_send>(datasend);
 
-   useEffect(() => {
+  useEffect(() => {
     checkLocalApiAndConnector();
-  }, []); 
+  }, []);
 
   async function saveRequest() {
     /* const settingsResponse = await RetrieveLocalApi();
     const apiRetrived= settingsResponse.ed_api_url; */
     const apiRetrived = await RetrieveLocalApi()
-    console.log("apiRetrived")
-    console.log(apiRetrived)
     if (!data?.title || !data?.data_offering_id || !data.file) {
       toast.error('Please fill out all required fields(*).');
       return;
@@ -122,17 +78,22 @@ const CreateDataEntityPush = () => {
     const requestBody = data;
     try {
       const responseRequest = await axiosWithInterceptorInstance.post(`${apiRetrived.ed_api_url}/provide-data`, requestBody);
-      if (responseRequest.data.responseCode==="200") {
-        toast.success('Data entity send to push_uri service');
-      }else{
-        toast.error('Data entity didn t send to push_uri service');
+      console.log("requestBody")
+      console.log(requestBody)
+      console.log(requestBody.push_security_type)
+      if (responseRequest.data.responseCode !== null) { // is null in case of empty uri
+        if (responseRequest.data.responseCode === "200") {
+          toast.success('Data entity send to push_uri service');
+        } else if (responseRequest.data.responseCode !== "200") {
+          toast.error('Data entity didn t send to push_uri service');
+        }
       }
       setTimeout(() => {
-         window.location.href = '/provideDataPush';
-        }, 3000);
+        window.location.href = 'provideDataPush';
+      }, 3000);
     } catch (error) {
       console.error('Error saving data: ', error);
-     toast.error('Error saving data, please also check the connector settings');
+      toast.error('Error while downloading data, please also check the connector settings');
     } finally {
       setIsLoading(false);
     }
@@ -163,11 +124,11 @@ const CreateDataEntityPush = () => {
 
   const handleChange = (name: keyof Data_send, value: string) => {
     setData(prevData => {
-      
-        return {
-          ...prevData,
-          [name]: value
-        };
+
+      return {
+        ...prevData,
+        [name]: value
+      };
     });
   };
 
@@ -189,8 +150,6 @@ const CreateDataEntityPush = () => {
     }
     axiosWithInterceptorInstance.get(`/dataset/my_offered_services/${value}`)
       .then(response => {
-        console.log("elenco servizi tra cui scegliere ")  // qui devo prendere il push_uri
-        console.log(response);
         setCardElements(prevState => ({
           ...prevState,
           title: response.data.data_catalog_data_offerings_obj.title,
@@ -202,11 +161,16 @@ const CreateDataEntityPush = () => {
           serviceName: response.data.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.name,
           categoryCode: response.data.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.code,
           categoryName: response.data.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.name,
-          push_uri:response.data.data_catalog_data_offerings_obj.push_uri
+          push_uri: response.data.data_catalog_data_offerings_obj.push_uri,
+          
         }));
         setData(antecedent => ({
           ...antecedent,
-          code: response.data.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.code
+          code: response.data.data_catalog_data_offerings_obj.data_catalog_business_object_obj.data_catalog_service_obj.data_catalog_category_obj.code,
+          push_security_type: response.data.data_catalog_data_offerings_obj.push_security_type,
+          push_security_addingto: response.data.data_catalog_data_offerings_obj.push_security_addingto,
+          push_security_field1: response.data.data_catalog_data_offerings_obj.push_security_field1,
+          push_security_field2: response.data.data_catalog_data_offerings_obj.push_security_field2,
         }));
       })
       .catch(error => {

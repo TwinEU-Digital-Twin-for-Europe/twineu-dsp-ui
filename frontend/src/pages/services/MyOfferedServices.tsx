@@ -16,6 +16,8 @@ import { useDispatch } from 'react-redux';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
 import { ChangingOrder } from '@app/components/helpers/OrderingStateChange';
 import { useLocation } from 'react-router-dom';
+import KafkaTopicsOfferedServices from '../modals/KafkaTopicsOfferedServices';
+import NatsTopicsOfferedServices from '../modals/NatsTopicsOfferedServices';
 const API_URL_FILTERS = "datalist/left-grouping/my_offered_services";
 const API_URL_DATA_PUSH = "/datalist/my_push_offered_services/page/"; // utilizzato il nuovo solo xke nel vecchio mancano i campi type e url se si aggiungono in teoria dovrebbe funzionare lo stesso 
 //const API_URL_DATA = "/datalist/my_offered_services/page/";
@@ -49,6 +51,8 @@ interface ITableData {
   service_id: string;
   cf_type: string;
   cf_push_uri: string;
+  cf_topic_kafka: string;
+  cf_topic: string;
 }
 const MyOfferedServices: React.FC = () => {
   const location = useLocation();
@@ -73,7 +77,9 @@ const MyOfferedServices: React.FC = () => {
   const [modalStates, setModalStates] = useState({
     categoriesModal: false,
     serviceModal: false,
-    BOModal: false
+    BOModal: false,
+    KafkaTopicsModal: false,
+    NatsTopicsModal: false,
   });
   const [columnToFilter, setcolumnToFilter] = useState({ name: '', value: '' });
   const [categoryOrdering, setCategoryOrdering] = useState("");
@@ -82,6 +88,7 @@ const MyOfferedServices: React.FC = () => {
   const [profileFormatOrdering, setProfileFormatOrdering] = useState("");
   const [profileDescriptionOrdering, setProfileDescriptionOrdering] = useState("");
   const [isPushEnabled, setIsPushEnabled] = useState(type === "push" ? true : false);
+  const [selectedColumn, setSelectedColumn] = useState("Subscriptions");
   function ChangingOrder_inside(stateToChange: any, columnToFilter: string) {
     switch (columnToFilter) {
       case "category": {
@@ -165,11 +172,15 @@ const MyOfferedServices: React.FC = () => {
     category_id: ModalFilter;
     service_id: ModalFilter;
     business_object_id: ModalFilter;
+    cf_topic_kafka: ModalFilter;
+    cf_topic: ModalFilter;
   }
   const [filterValuesFromModals, setFilterValuesFromModals] = useState<FilterValuesFromModals>({
     category_id: { name: "", id: "" },
     service_id: { name: "", id: "" },
-    business_object_id: { name: "", id: "" }
+    business_object_id: { name: "", id: "" },
+    cf_topic_kafka: { name: "", id: "" },
+    cf_topic: { name: "", id: "" },
 
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -236,16 +247,8 @@ const MyOfferedServices: React.FC = () => {
 
     setIsPushEnabled(isPushEnabled)
 
-    /* if (isPushEnabled) {
-      setIsPushEnabled(() => false)
-    } else { //is not a push scenario, we would like to enable it
-      if ((window as any)["env"]["isPushEnabled"]) { //Just a check that we can enable it
-        setIsPushEnabled(() => true)
-      }
-    } */
-    //setCurrentPage(() => 0)
     clearActiveFilter()
-    let modalFilters: string[] = ['category_id', 'serviceModal', 'BOModal']
+    let modalFilters: string[] = ['category_id', 'service_id', 'business_object_id', 'cf_topic_kafka', 'cf_topic']
     modalFilters.forEach((mf) => {
       cancelModalFilters(mf)
     }
@@ -484,7 +487,7 @@ const MyOfferedServices: React.FC = () => {
                     <div className="input-group " style={{ transform: "scale(0.8)" }}>
                       <button onClick={() => handleOpenModal('BOModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
                         <i className="fas fa-search"></i>
-                        Businnes object
+                        Business object
                       </button>
                       <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.business_object_id.name} placeholder={filterValuesFromModals.business_object_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
                       <button onClick={() => cancelModalFilters('business_object_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">
@@ -493,6 +496,34 @@ const MyOfferedServices: React.FC = () => {
                     </div>
                   </td>
                 </tr>
+                {(window as any)["env"]["Kafka"] && <tr>
+                  <td>
+                    <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                      <button onClick={() => handleOpenModal('KafkaTopicsModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-search"></i>
+                        Kafka topic
+                      </button>
+                      <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.cf_topic_kafka.name} placeholder={filterValuesFromModals.cf_topic_kafka.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                      <button onClick={() => cancelModalFilters('cf_topic_kafka')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>}
+                {(window as any)["env"]["Nats"] && <tr>
+                  <td>
+                    <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                      <button onClick={() => handleOpenModal('NatsTopicsModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-search"></i>
+                        NATS topic
+                      </button>
+                      <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.cf_topic.name} placeholder={filterValuesFromModals.cf_topic.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                      <button onClick={() => cancelModalFilters('cf_topic')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>}
               </tbody>
             </table>
           </Card>
@@ -539,7 +570,13 @@ const MyOfferedServices: React.FC = () => {
                     {profileDescriptionOrdering === "desc" && <i className="fas fa-sort-up"></i>}{profileDescriptionOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!profileDescriptionOrdering && <i className="fas fa-sort"></i>}
                   </button></th>
                   <th style={{ textAlign: "center", verticalAlign: "middle" }}>Status</th>
-                  <th style={{ textAlign: "center", verticalAlign: "middle" }}>Subscriptions</th>
+                  {((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <th style={{ textAlign: "center", verticalAlign: "middle" }}>
+                    Multiple columns
+                  </th>}
+
+                  {!((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <th style={{ textAlign: "center", verticalAlign: "middle" }}>
+                    Subscriptions
+                  </th>}
                 </tr>
               </thead>
               <tbody>
@@ -577,7 +614,23 @@ const MyOfferedServices: React.FC = () => {
                     onChange={handleInputChange}
                   /></td>
                   <td></td>
-                  <td></td>
+                  <td>
+
+                    {((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                      <Dropdown.Toggle id="dropdown-basic" className="d-inline-flex align-items-center">
+
+                        <div className="value">{selectedColumn}</div>
+
+                      </Dropdown.Toggle>
+                      <Dropdown.Menu>
+                        <Dropdown.Item onClick={() => setSelectedColumn("Subscriptions")}>Subscriptions</Dropdown.Item>
+                        {(window as any)["env"]["Kafka"] && <Dropdown.Item onClick={() => setSelectedColumn("Kafka Topics")}>Kafka Topics</Dropdown.Item>}
+                        {(window as any)["env"]["Nats"] && <Dropdown.Item onClick={() => setSelectedColumn("Nats Topics")}>Nats Topics</Dropdown.Item>}
+                      </Dropdown.Menu>
+                    </Dropdown>}
+
+
+                  </td>
                 </tr>
                 {data.map((item, index) => (
                   <tr key={index}>
@@ -602,7 +655,10 @@ const MyOfferedServices: React.FC = () => {
                     <td>{item.profile_selector}</td>
                     <td>{item.profile_description}</td>
                     <td>{Inner(item.status)}</td>
-                    <td>{Inner(item.subscriptions)}</td>
+
+                    {selectedColumn === "Subscriptions" && <td>{Inner(item.subscriptions)}</td>}
+                    {selectedColumn === "Kafka Topics" && <td>{item.cf_topic_kafka}</td>}
+                    {selectedColumn === "Nats Topics" && <td>{item.cf_topic}</td>}
                   </tr>
                 ))}
               </tbody>
@@ -629,6 +685,22 @@ const MyOfferedServices: React.FC = () => {
                 show={modalStates.BOModal}
                 handleClose={() => handleCloseModal('BOModal')}
                 onModalDataChange={handleModalDataChange}
+              />
+            )}
+            {modalStates.KafkaTopicsModal && (
+              <KafkaTopicsOfferedServices
+                show={modalStates.KafkaTopicsModal}
+                handleClose={() => handleCloseModal('KafkaTopicsModal')}
+                onModalDataChange={handleModalDataChange}
+                typeOfService={isPushEnabled}
+              />
+            )}
+            {modalStates.NatsTopicsModal && (
+              <NatsTopicsOfferedServices
+                show={modalStates.NatsTopicsModal}
+                handleClose={() => handleCloseModal('NatsTopicsModal')}
+                onModalDataChange={handleModalDataChange}
+                typeOfService={isPushEnabled}
               />
             )}
 

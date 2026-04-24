@@ -15,6 +15,9 @@ import checkLevel from '@app/components/helpers/CheckLevel';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
 import { ChangingOrder } from '@app/components/helpers/OrderingStateChange';
 import { useLocation } from 'react-router-dom';
+import KafkaTopicsSubscriptions from '../modals/KafkaTopicsSubscriptions';
+import NatsTopicsSubscriptions from '../modals/NatsTopicsSubscriptions';
+import { Dropdown } from 'react-bootstrap';
 const API_URL_FILTERS = "/datalist/left-grouping/my_subscriptions?gf_type=data";
 //const API_URL_DATA = "/datalist/my_subscriptions/page/";
 const API_URL_DATA_PUSH = "/datalist/my_push_sub/page/";
@@ -61,12 +64,15 @@ interface ITableData {
     my_subscription_id: string;
     category_code: string;
     cf_name: string;
-    cf_username: string; 
+    cf_username: string;
+    cf_topic_kafka_sub: string;
+    cf_topic_nats_sub: string;
 }
 const MySubscriptions: React.FC = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const type = queryParams.get('type');
+    const [selectedColumn, setSelectedColumn] = useState("comments");
     const [data, setData] = useState<ITableData[]>([]);
     const [filters, setFilters] = useState<IFilter[]>([]);
     type ExpandedFiltersByLevel = { [level: number]: string | null };
@@ -85,7 +91,7 @@ const MySubscriptions: React.FC = () => {
         sqlf_8: "",
         status: "",
         comments: "",
-        user_offering: ""
+        user_offering: "",
     });
 
 
@@ -94,7 +100,9 @@ const MySubscriptions: React.FC = () => {
         serviceModal: false,
         businnesObjectModal: false,
         offeringModal: false,
-        userRequestingModal: false
+        userRequestingModal: false,
+        KafkaTopicsModal: false,
+        NatsTopicsModal: false,
     });
 
     type FilterValuesFromModals = {
@@ -102,6 +110,8 @@ const MySubscriptions: React.FC = () => {
         service_id: ModalFilter;
         business_object_id: ModalFilter;
         user_requesting_id: ModalFilter;
+        cf_topic_kafka_sub: ModalFilter;
+        cf_topic_nats_sub: ModalFilter;
 
     }
 
@@ -110,7 +120,8 @@ const MySubscriptions: React.FC = () => {
         service_id: { name: "", id: "" },
         business_object_id: { name: "", id: "" },
         user_requesting_id: { name: "", id: "" },
-
+        cf_topic_kafka_sub: { name: "", id: "" },
+        cf_topic_nats_sub: { name: "", id: "" },
 
     });
     const [currentPage, setCurrentPage] = useState(1);
@@ -122,7 +133,7 @@ const MySubscriptions: React.FC = () => {
     const [createdOnOrdering, setCreatedOnOrdering] = useState("");
     const [offeringUsernameOrdering, setofferingUsernameOrdering] = useState("");
     const [offeringCompanyNameOrdering, setofferingCompanyNameOrdering] = useState("");
-    const [isPushEnabled, setIsPushEnabled] = useState(type==="push" ? true : false);
+    const [isPushEnabled, setIsPushEnabled] = useState(type === "push" ? true : false);
     function ChangingOrder_inside(stateToChange: any, columnToFilter: string) {
         switch (columnToFilter) {
             case "category": {
@@ -256,24 +267,14 @@ const MySubscriptions: React.FC = () => {
         }
         return query;
     };
+
     const changeScenario = (isPushEnabled: boolean) => {
-
-        setIsPushEnabled(isPushEnabled)
-
-        /* if (isPushEnabled) {
-          setIsPushEnabled(() => false)
-        } else { //is not a push scenario, we would like to enable it
-          if ((window as any)["env"]["isPushEnabled"]) { //Just a check that we can enable it
-            setIsPushEnabled(() => true)
-          }
-        } */
-        //setCurrentPage(() => 0)
-        clearActiveFilter()
-        let modalFilters: string[] = ['category_id', 'serviceModal', 'BOModal']
+        setIsPushEnabled(isPushEnabled);
+        clearActiveFilter();
+        const modalFilters: string[] = ['category_id', 'service_id', 'business_object_id', 'user_requesting_id', 'cf_topic_kafka_sub', 'cf_topic_nats_sub'];
         modalFilters.forEach((mf) => {
-            cancelModalFilters(mf)
-        }
-        )
+            cancelModalFilters(mf);
+        });
     };
 
     const fetchData = async () => {
@@ -303,12 +304,12 @@ const MySubscriptions: React.FC = () => {
             setTotalPages(response.data.totalPages); */
 
             if (isPushEnabled) {
-                const response = await axiosWithInterceptorInstance.get<{ listContent: ITableData[], totalPages: number, pageSize:number }>(`${API_URL_DATA_PUSH}${currentPage - 1}?cf_type=push&${filter2Query}${filterQuery}&sel-sort-code=${columnToFilter.name}&sel-sort-order=${columnToFilter.value}`);
+                const response = await axiosWithInterceptorInstance.get<{ listContent: ITableData[], totalPages: number, pageSize: number }>(`${API_URL_DATA_PUSH}${currentPage - 1}?cf_type=push&${filter2Query}${filterQuery}&sel-sort-code=${columnToFilter.name}&sel-sort-order=${columnToFilter.value}`);
                 setData(response.data.listContent);
                 setTotalPages(response.data.totalPages);
                 setPageSize(response.data.pageSize)
             } else {
-                const response = await axiosWithInterceptorInstance.get<{ listContent: ITableData[], totalPages: number, pageSize:number }>(`${API_URL_DATA_PUSH}${currentPage - 1}?cf_type=data&${filter2Query}${filterQuery}&sel-sort-code=${columnToFilter.name}&sel-sort-order=${columnToFilter.value}`);
+                const response = await axiosWithInterceptorInstance.get<{ listContent: ITableData[], totalPages: number, pageSize: number }>(`${API_URL_DATA_PUSH}${currentPage - 1}?cf_type=data&${filter2Query}${filterQuery}&sel-sort-code=${columnToFilter.name}&sel-sort-order=${columnToFilter.value}`);
                 setData(response.data.listContent);
                 setTotalPages(response.data.totalPages);
                 setPageSize(response.data.pageSize)
@@ -377,11 +378,11 @@ const MySubscriptions: React.FC = () => {
 
 
     const cancelModalFilters = (modalName: string) => {
-        setFilterValuesFromModals({
-            ...filterValuesFromModals,
+        setFilterValuesFromModals((prev) => ({
+            ...prev,
             [modalName]: ""
-        });
-        setCurrentPage(1)
+        }));
+        setCurrentPage(1);
     };
 
     const handleOpenModal = (modalName: string) => {
@@ -395,6 +396,7 @@ const MySubscriptions: React.FC = () => {
         name: string;
         id: string;
     }
+
     const handleModalDataChange = (modalName: string, value: ModalFilter) => {
         setFilterValuesFromModals({ ...filterValuesFromModals, [modalName]: value });
         setCurrentPage(1)
@@ -478,7 +480,7 @@ const MySubscriptions: React.FC = () => {
                                         <div className="input-group" style={{ transform: "scale(0.8)" }}>
                                             <button onClick={() => handleOpenModal('businnesObjectModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
                                                 <i className="fas fa-search"></i>
-                                                Businnes object
+                                                Business object
                                             </button>
                                             <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.business_object_id.name} placeholder={filterValuesFromModals.business_object_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
                                             <button onClick={() => cancelModalFilters('business_object_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">
@@ -501,6 +503,34 @@ const MySubscriptions: React.FC = () => {
                                         </div>
                                     </td>
                                 </tr>
+                                {(window as any)["env"]["Kafka"] && <tr>
+                                    <td>
+                                        <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                                            <button onClick={() => handleOpenModal('KafkaTopicsModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                                                <i className="fas fa-search"></i>
+                                                Kafka topic
+                                            </button>
+                                            <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.cf_topic_kafka_sub.name} placeholder={filterValuesFromModals.cf_topic_kafka_sub.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                                            <button onClick={() => cancelModalFilters('cf_topic_kafka_sub')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>}
+                                {(window as any)["env"]["Nats"] && <tr>
+                                    <td>
+                                        <div className="input-group" style={{ transform: "scale(0.8)" }}>
+                                            <button onClick={() => handleOpenModal('NatsTopicsModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                                                <i className="fas fa-search"></i>
+                                                NATS topic
+                                            </button>
+                                            <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.cf_topic_nats_sub.name} placeholder={filterValuesFromModals.cf_topic_nats_sub.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
+                                            <button onClick={() => cancelModalFilters('cf_topic_nats_sub')} className="btn btn-outline-secondary" type="button" id="button-addon1">
+                                                <i className="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>}
                             </tbody>
                         </table> </Card>
                 </Col>
@@ -535,13 +565,21 @@ const MySubscriptions: React.FC = () => {
                                     <th style={{ textAlign: "center", verticalAlign: "middle" }}>Created On <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(createdOnOrdering, "created_on")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
                                         {createdOnOrdering === "desc" && <i className="fas fa-sort-up"></i>}{createdOnOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!createdOnOrdering && <i className="fas fa-sort"></i>}
                                     </button></th>
-                                    <th style={{ textAlign: "center", verticalAlign: "middle" }}>Comments</th>
+
                                     <th style={{ textAlign: "center", verticalAlign: "middle" }}>Offering Username <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(offeringUsernameOrdering, "cf_username")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
                                         {offeringUsernameOrdering === "desc" && <i className="fas fa-sort-up"></i>}{offeringUsernameOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!offeringUsernameOrdering && <i className="fas fa-sort"></i>}
                                     </button></th>
                                     <th style={{ textAlign: "center", verticalAlign: "middle", maxWidth: "1px", wordBreak: 'break-word' }}>Offering Company Name  <button className="btn btn-light text-end" onClick={() => ChangingOrder_inside(offeringCompanyNameOrdering, "cf_name")} style={{ paddingLeft: "10 px", scale: "0.6" }} >
                                         {offeringCompanyNameOrdering === "desc" && <i className="fas fa-sort-up"></i>}{offeringCompanyNameOrdering === "asc" && <i className="fas fa-sort-down"></i>}{!offeringCompanyNameOrdering && <i className="fas fa-sort"></i>}
                                     </button></th>
+                                    {((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <th style={{ textAlign: "center", verticalAlign: "middle" }}>
+                                        Multiple columns
+                                    </th>}
+
+                                    {!((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <th style={{ textAlign: "center", verticalAlign: "middle" }}>
+                                        Comments
+                                    </th>}
+
                                 </tr>
                             </thead>
                             <tbody>
@@ -549,13 +587,13 @@ const MySubscriptions: React.FC = () => {
                                     <td></td>
                                     <td></td>
                                     <td></td>
-                                    <td>{ <Form.Control
+                                    <td>{<Form.Control
                                         type="text"
                                         name="title"
                                         placeholder="Filter"
                                         value={filterValues.title}
                                         onChange={handleInputChange}
-                                    /> }</td>
+                                    />}</td>
                                     <td><Form.Control
                                         type="text"
                                         name="status"
@@ -570,13 +608,7 @@ const MySubscriptions: React.FC = () => {
                                         value={filterValues.created_on}
                                         onChange={handleInputChange}
                                     /></td>
-                                    <td><Form.Control
-                                        type="text"
-                                        name="comments"
-                                        placeholder="Filter"
-                                        value={filterValues.comments}
-                                        onChange={handleInputChange}
-                                    /></td>
+
                                     <td><Form.Control
                                         type="text"
                                         name="cf_username"
@@ -591,7 +623,31 @@ const MySubscriptions: React.FC = () => {
                                         value={filterValues.cf_name}
                                         onChange={handleInputChange}
                                     /></td>
+                                    <td>
+                                        {!((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"])
+                                            && <Form.Control
+                                                type="text"
+                                                name="comments"
+                                                placeholder="Filter"
+                                                value={filterValues.comments}
+                                                onChange={handleInputChange}
+                                            />
+                                        }
+                                        {((window as any)["env"]["Kafka"] || (window as any)["env"]["Nats"]) && <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                                            <Dropdown.Toggle id="dropdown-basic" className="d-inline-flex align-items-center">
 
+                                                <div className="value">{selectedColumn}</div>
+
+                                            </Dropdown.Toggle>
+                                            <Dropdown.Menu>
+                                                <Dropdown.Item onClick={() => setSelectedColumn("comments")}>Comments</Dropdown.Item>
+                                                {(window as any)["env"]["Kafka"] && <Dropdown.Item onClick={() => setSelectedColumn("KafkaTopics")}>Kafka Topics</Dropdown.Item>}
+                                                {(window as any)["env"]["Nats"] && <Dropdown.Item onClick={() => setSelectedColumn("natsTopics")}>Nats Topics</Dropdown.Item>}
+                                            </Dropdown.Menu>
+                                        </Dropdown>}
+
+
+                                    </td>
                                 </tr>
 
                                 {data.map((item, index) => (
@@ -607,9 +663,12 @@ const MySubscriptions: React.FC = () => {
                                         {/* <td>{item.user_offering}</td>  */}
                                         <td>{item.status}</td>
                                         <td>{format(new Date(item.created_on), 'dd/MM/yyyy HH:mm')}</td>
-                                        <td>{item.comments}</td>
+
                                         <td>{item.cf_username}</td>
                                         <td>{item.cf_name}</td>
+                                        {selectedColumn === "comments" && <td>{item.comments}</td>}
+                                        {selectedColumn === "KafkaTopics" && <td>{item.cf_topic_kafka_sub}</td>}
+                                        {selectedColumn === "natsTopics" && <td>{item.cf_topic_nats_sub}</td>}
                                     </tr>
                                 ))}
                             </tbody>
@@ -640,6 +699,22 @@ const MySubscriptions: React.FC = () => {
                                 show={modalStates.userRequestingModal}
                                 handleClose={() => handleCloseModal('userRequestingModal')}
                                 onModalDataChange={handleModalDataChange}
+                            />
+                        )}
+                        {modalStates.KafkaTopicsModal && (
+                            <KafkaTopicsSubscriptions
+                                show={modalStates.KafkaTopicsModal}
+                                handleClose={() => handleCloseModal('KafkaTopicsModal')}
+                                onModalDataChange={handleModalDataChange}
+                                typeOfService={isPushEnabled}
+                            />
+                        )}
+                        {modalStates.NatsTopicsModal && (
+                            <NatsTopicsSubscriptions
+                                show={modalStates.NatsTopicsModal}
+                                handleClose={() => handleCloseModal('NatsTopicsModal')}
+                                onModalDataChange={handleModalDataChange}
+                                typeOfService={isPushEnabled}
                             />
                         )}
 

@@ -7,6 +7,7 @@ import React, { useState, ChangeEvent } from 'react';
 import BusinnesObject from '../modals/BusinnesObject_CreateService';
 import { toast } from 'react-toastify';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import checkTopic from '@app/components/helpers/checkTopic';
 
 //classe modificata da Pasquale 
 // aggiunto nella interfaccia e nei valori di default i campi type e push_uri e messo stampe per capire la richiesta /my_offered/service come va 
@@ -120,11 +121,14 @@ interface DataCatalogDataOfferings {
   push_uri: string;
   topic: string;
   updating_frequency: number;
+  topic_kafka: string;
+  updating_frequency_kafka: number;
+  push_security_type: string;
+  push_security_field1: string;
+  push_security_field2: string;
+  push_security_addingto: string;
 }
 
-interface ApiResponse {
-  data_catalog_data_offerings: DataCatalogDataOfferings;
-}
 
 const CreatePushService = () => {
   const formatDateFromData = (dateString: string): string => {
@@ -229,8 +233,16 @@ const CreatePushService = () => {
     type: "push",
     push_uri: "",
     topic: "",
-    updating_frequency: 60
+    topic_kafka: "",
+    updating_frequency: 60,
+    updating_frequency_kafka: 60,
+    push_security_type: "NO-AUTH",
+    push_security_field1: "",
+    push_security_field2: "",
+    push_security_addingto: "",
+
   };
+
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const id = queryParams.get('id');
@@ -239,6 +251,7 @@ const CreatePushService = () => {
     BOModal: false
   });
   const [alreadyUriAdvised, setAlreadyUriAdvised] = useState(false);
+  const [alreadySecurityAdvised, setAlreadySecurityAdvised] = useState(false);
 
   const [cardElements, setCardElements] = useState({
     businnesObjectName: "",
@@ -264,25 +277,38 @@ const CreatePushService = () => {
     }
 
     if (!data?.push_uri && !alreadyUriAdvised) {
-      console.log(data?.push_uri)
       toast.warning("You did not provide the push uri, if you want to proceed please save it again", { autoClose: false })
       setAlreadyUriAdvised(true)
       return
     }
 
-    const requestBody = {
-      data_catalog_data_offerings: data
-    };
+    if ((!data?.push_security_field1 || !data?.push_security_field2) && data.push_security_type !== "NO-AUTH" && !alreadySecurityAdvised) {
+      toast.warning(`You did not provide the push security fields for ${data?.push_security_type} authentication, if you want to proceed please save it again`, { autoClose: false })
+      setAlreadySecurityAdvised(true)
+      return
+    }
     try {
-      console.log("input create serv")
-      console.log(requestBody)
+      let requestBody = {
+        data_catalog_data_offerings: data
+      }
+      if (data.push_security_type !== "NO-AUTH") {
+        const cryptedPassword = await axiosWithInterceptorInstance.get(`custom-query/data-objects/encrypt-password?password=${String(data.push_security_field2)}`)
+        requestBody = {
+          data_catalog_data_offerings: {
+            ...data,
+            push_security_field2: cryptedPassword.data[0].encrypted_password
+          }
+        };
+      }
       const response = await axiosWithInterceptorInstance.post('/dataset/my_offered_services', requestBody);
-      console.log(response)
-      window.location.href = '/myOfferedServices?type=push'
+      window.location.href = 'myOfferedServices?type=push'
     } catch (error) {
-      console.error('Error saving data: ', error);
+      toast.error(`Error creating the push service: ${error}`);
+      return;
     }
   }
+
+
   function handleSelect(value: string) {
     if (data) {
       setData({
@@ -405,7 +431,10 @@ const CreatePushService = () => {
     }
   };
 
-  const handleChange = (name: keyof DataCatalogDataOfferings, value: string) => {
+  const handleChange = (name: keyof DataCatalogDataOfferings, value: string | number) => {
+    if ((name === "topic_kafka" || name === "topic") && typeof value === "string") {
+      value = checkTopic(value, name === "topic_kafka" ? "Kafka" : "Nats")
+    }
     setData(prevData => {
       if (prevData === null) {
         return null;
@@ -452,17 +481,82 @@ const CreatePushService = () => {
           <ListGroup.Item><Label for="title">Push URI</Label>
             <Input type="text" name="pushuri" id="pushuri" value={data?.push_uri} onChange={(e) => handleChange('push_uri', e.target.value)} /></ListGroup.Item>
         </ListGroup>
-
       </Card>
+      {data?.type === "push" && data?.push_uri && <Card >
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Authentication for Push Services Rest API</b></h3>
+        <h6 style={{ paddingLeft: " 20px" }}>Setup the Authentication for the rest API, by default it is NO-AUTH</h6>
+        <ListGroup variant="flush">
+          <ListGroup.Item>
+            <Row form>
+              <Col md={6}>
+                <Label for="id">Type of Authentication</Label>
+                <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                  <Dropdown.Toggle id="push-auth-type" className="d-inline-flex align-items-center">
+                    <div className="value">{data.push_security_type}</div>
+                    {(data.push_security_type === null || data.push_security_type === "") && <div className="value">Please select the authentication type</div>}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "NO-AUTH")}>NO-AUTH</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "BASIC")}>BASIC</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_type", "API-KEY")}>API-KEY</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Col>
+              {(data.push_security_type === "API-KEY" || data.push_security_type === "BASIC") && <Col md={6}>
+                <Label for="id">Adding to</Label>
+                <Dropdown drop='down' data-bs-toggle="tooltip" data-placement="down" title="Select the column to display:">
+                  <Dropdown.Toggle id="push-addingto" className="d-inline-flex align-items-center">
+                    <div className="value">{data.push_security_addingto}</div>
+                    {(data.push_security_addingto === null || data.push_security_addingto === "") && <div className="value">Please select the adding to parameter</div>}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => handleChange("push_security_addingto", "HEADER")}>HEADER</Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleChange("push_security_addingto", "QUERY-PARAMS")}>QUERY-PARAMS</Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </Col>}
+            </Row>
+          </ListGroup.Item>
+          <ListGroup.Item>
+            <Row form>
+              {data.push_security_type === "BASIC" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Username">Username</Label>
+                  <Input type="text" name="Username" id="Username" placeholder={"Please insert the username"} value={data?.push_security_field1} onChange={(e) => handleChange('push_security_field1', e.target.value)} />
+                </FormGroup>
+              </Col>}
+              {data.push_security_type === "API-KEY" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Key">Key</Label>
+                  <Input type="text" name="Key" id="Key" placeholder={"Please insert the key"} value={data?.push_security_field1} onChange={(e) => handleChange('push_security_field1', e.target.value)} />
+                </FormGroup>
+              </Col>}
+
+              {data.push_security_type === "BASIC" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Password">Password</Label>
+                  <Input type="password" name="Password" id="Password" placeholder={"Please insert the password"} value={data?.push_security_field2} onChange={(e) => handleChange('push_security_field2', e.target.value)} />
+                </FormGroup>
+              </Col>}
+              {data.push_security_type === "API-KEY" && <Col md={6}>
+                <FormGroup>
+                  <Label for="Value">Value</Label>
+                  <Input type="password" name="Value" id="Value" placeholder={"Please insert the value"} value={data?.push_security_field2} onChange={(e) => handleChange('push_security_field2', e.target.value)} />
+                </FormGroup>
+              </Col>}
+            </Row>
+          </ListGroup.Item>
+        </ListGroup>
+      </Card>}
 
       <Card >
-        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Businnes object*</b></h3>
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Business object*</b></h3>
         <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select Business Object For This Data Offering</h6>
         <ListGroup variant="flush">
           <ListGroup.Item>
             <button onClick={() => handleOpenModal('BOModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
               <i className="fas fa-search nav-io"></i>
-              Businnes object:  {!cardElements.businnesObjectName && "please select one option"} {cardElements.businnesObjectName}
+              Business object:  {!cardElements.businnesObjectName && "please select one option"} {cardElements.businnesObjectName}
             </button>
           </ListGroup.Item>
           <ListGroup.Item>
@@ -552,7 +646,7 @@ const CreatePushService = () => {
 
         </ListGroup>
       </Card>
-      <Card >
+      {(window as any)["env"]["Nats"] && <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>NATS parameters</b></h3>
         <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the NATS plugin</h6>
         <ListGroup variant="flush">
@@ -560,21 +654,45 @@ const CreatePushService = () => {
             <Row form>
               <Col md={6}>
                 <FormGroup>
-                  <Label for="serviceCode">Topic</Label>
-                  <Input type="text" name="topic" id="topic" value={data?.topic} onChange={(e) => handleChange('topic', e.target.value)} />
+                  <Label for="serviceCode">NATS topic</Label>
+                  <Input type="text" name="topic" id="topic" placeholder="Enter NATS topic" value={data?.topic} onChange={(e) => handleChange('topic', e.target.value)} />
                 </FormGroup>
               </Col>
               <Col md={6}>
                 <FormGroup>
                   <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
-                  <Input type="text" name="updating_frequency" id="updating_frequency" value={data?.updating_frequency} onChange={(e) => handleChange('updating_frequency', e.target.value)} />
+                  <Input type="text" name="updating_frequency" id="updating_frequency" placeholder="Enter updating frequency" value={data?.updating_frequency} onChange={(e) => handleChange('updating_frequency', e.target.value)} />
                 </FormGroup>
               </Col>
             </Row>
           </ListGroup.Item>
         </ListGroup>
-        
-      </Card>
+
+      </Card>}
+
+      {(window as any)["env"]["Kafka"] && <Card >
+        <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Kafka parameters</b></h3>
+        <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the Kafka plugin</h6>
+        <ListGroup variant="flush">
+          <ListGroup.Item>
+            <Row form>
+              <Col md={6}>
+                <FormGroup>
+                  <Label for="serviceCode">Kafka topic</Label>
+                  <Input type="text" name="topic_kafka" id="topic_kafka" placeholder="Enter Kafka topic" value={data?.topic_kafka} onChange={(e) => handleChange('topic_kafka', e.target.value)} />
+                </FormGroup>
+              </Col>
+              <Col md={6}>
+                <FormGroup>
+                  <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                  <Input type="text" name="updating_frequency_kafka" id="updating_frequency_kafka" placeholder="Enter updating frequency" value={data?.updating_frequency_kafka} onChange={(e) => handleChange('updating_frequency_kafka', e.target.value)} />
+                </FormGroup>
+              </Col>
+            </Row>
+          </ListGroup.Item>
+        </ListGroup>
+
+      </Card>}
 
       <Card >
         <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Semantic Definition</b> </h3>
@@ -636,4 +754,3 @@ const CreatePushService = () => {
 };
 
 export default CreatePushService;
-

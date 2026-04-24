@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import Main from '@modules/main/Main';
 import Login from '@modules/login/Login';
@@ -45,34 +44,18 @@ import {
 } from './utils/oidc-providers';
 import axios from 'axios';
 import setGlobalHeader from './components/helpers/SetGlobalHeader';
-//let appName = (window as any)["env"]["appName"]
-//let appName = ((window as any)["env"]["appName"] && (window as any)["env"]["appName"] !== "APP_NAME")? (window as any)["env"]["appName"]  : "Energy Data Space";
-
-
-
-
-/* 
-let appName = "Energy Data Space"
-if ((window as any)["env"]["appName"]){
-  console.log("entro qui per cambiare")
-  if ((window as any)["env"]["appName"] !== "APP_NAME"){
-    console.log("entro qui per cambiare2")
-    appName = (window as any)["env"]["appName"]
-  }
-}  */
-
+import AllNotifications from './pages/AllNotifications';
 
 let appName = (window as any)["env"]["appName"]
 let variableCompare = "A PP_NAME"
 
-if (appName === variableCompare.replace(" ","") ){
+if (appName === variableCompare.replace(" ", "")) {
   appName = "Energy Data Space"
 }
 
-if (!(window as any)["env"]["appName"]){
+if (!(window as any)["env"]["appName"]) {
   appName = "Energy Data Space"
 }
-
 
 const App = () => {
   const windowSize = useWindowSize();
@@ -80,11 +63,12 @@ const App = () => {
   const dispatch = useDispatch();
   const [isAppLoading, setIsAppLoading] = useState(true);
   axios.defaults.baseURL = (window as any)["env"]["apiUrl"];
-  
+  const basePath = (window as any)["env"]["basePath"] || "/";
+
   const checkSession = async () => {
     try {
       let responses: any = await Promise.all([
-        
+
         getAuthStatus(),
       ]);
       responses = responses.filter((r: any) => Boolean(r));
@@ -100,14 +84,13 @@ const App = () => {
 
   useEffect(() => {
     checkSession();
-    if (localStorage.getItem("token")){
+    if (localStorage.getItem("token")) {
       setGlobalHeader();
-      
+
     }
-    
     document.title = `${appName} Connector`;
-    
-      }, []);
+
+  }, []);
 
   useEffect(() => {
     const size = calculateWindowSize(windowSize.width);
@@ -119,9 +102,9 @@ const App = () => {
   if (isAppLoading) {
     return <p>Loading</p>;
   }
-
+  //if (!user) return <Login />;
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basePath}>
       <Routes>
         <Route path="/login" element={<PublicRoute />}>
           <Route path="/login" element={<Login />} />
@@ -135,6 +118,7 @@ const App = () => {
         <Route path="/recover-password" element={<PublicRoute />}>
           <Route path="/recover-password" element={<RecoverPassword />} />
         </Route>
+
         <Route path="/" element={<PrivateRoute />}>
           <Route path="/" element={<Main />}>
             <Route path="/sub-menu-2" element={<Blank />} />
@@ -145,23 +129,15 @@ const App = () => {
             <Route path="/myOfferedServices" element={<MyOfferedServices />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/editService" element={<EditService />} />
-
             <Route path="/detailedService" element={<DetailedService />} />
             <Route path="/createDataService" element={<CreateDataService />} />
             <Route path="/createPushService" element={<CreatePushService />} />
-
             <Route path="/requests" element={<Requests />} />
-           
             <Route path="/editRequestedService" element={<EditRequestedService />} />
             <Route path="/mySubscriptions" element={<MySubscriptions />} />
-
-
             <Route path="/newSubscription" element={<NewSubscription />} />
-
-            
             <Route path="/editSubscription" element={<EditSubscription />} />
             <Route path="/connectorSettings" element={<ConnectorSettings />} />
-
             <Route path="/provideData" element={<ProvideData />} />
             <Route path="/provideDataPush" element={<ProvideDataPush />} />
             <Route path="/editDataEntity" element={<EditDataEntity />} />
@@ -170,11 +146,13 @@ const App = () => {
             <Route path="/consumeData" element={<ConsumeData />} />
             <Route path="/detailDataEntity" element={<DetailDataEntity />} />
             <Route path="/timeline" element={<TimelineTab isActive={true} />} />
-
-            <Route path="/" element={<Dashboard />} />
+            {(window as any)["env"]["isNotificationEnabled"] && <Route path="/allNotifications" element={<AllNotifications /* user={user} isActive={false}*/ />} />}
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/" element={<Navigate to="dashboard" />} />
           </Route>
         </Route>
       </Routes>
+
       <ToastContainer
         autoClose={3000}
         draggable={false}

@@ -37,7 +37,7 @@ const MessagesDropdown = () => {
         <Link to="/" className="dropdown-item">
           <div className="media">
             <PfImage
-              src="/img/default-profile.png"
+              src={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
               alt="User Avatar"
               width={50}
               rounded
@@ -67,7 +67,7 @@ const MessagesDropdown = () => {
         <Link to="/" className="dropdown-item">
           <div className="media">
             <PfImage
-              src="/img/default-profile.png"
+              src={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
               alt="User Avatar"
               width={50}
               rounded
@@ -97,7 +97,7 @@ const MessagesDropdown = () => {
         <Link to="/" className="dropdown-item">
           <div className="media">
             <PfImage
-              src="/img/default-profile.png"
+              src={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
               alt="User Avatar"
               width={50}
               rounded

@@ -13,7 +13,7 @@ const Post = ({isClearfix = false}: {isClearfix?: boolean}) => {
     <div className={`post ${isClearfix ? 'clearfix' : ''}`}>
       <div className="user-block">
         <StyledUserImage
-          src="/img/default-profile.png"
+          src={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
           alt="User"
           width={40}
           height={40}

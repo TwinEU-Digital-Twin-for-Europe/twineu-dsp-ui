@@ -108,7 +108,7 @@ const RecoverPassword = () => {
             </div>
           </form>
           <p className="mt-3 mb-1">
-            <Link to="/login">{t<string>('login.button.signIn.label')}</Link>
+            <Link to="login">{t<string>('login.button.signIn.label')}</Link>
           </p>
         </div>
       </div>

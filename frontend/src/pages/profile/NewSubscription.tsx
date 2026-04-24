@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Container, Row, Col, FormGroup, Label } from 'reactstrap';
+import { Container, Row, Col, FormGroup, Label, Input } from 'reactstrap';
 import Card from 'react-bootstrap/Card';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
@@ -7,6 +7,7 @@ import { useLocation } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import Offering from '../modals/Offering_NewSubscription';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import checkTopic from '@app/components/helpers/checkTopic';
 
 ////Receiving interface
 interface Company {
@@ -63,6 +64,10 @@ interface Data_catalog_data_offerings {
     user_1_1_obj: User_1_1;
     user_obj: User;
     comments: string;
+    topic_kafka_sub: string;
+    updating_frequency_kafka_sub: number;
+    topic_sub: null;
+    updating_frequency_sub: number;
 }
 
 
@@ -70,34 +75,53 @@ interface ApiReceiving {
     data_catalog_data_offerings_obj: Data_catalog_data_offerings;
 }
 
+///////////////////////////////////////////////////
 interface DataCatalogDataRequest {
     comments: string;
     id: string | null;
     data_catalog_data_offering_id: string;
     status: string;
+    topic_kafka_sub: string;
+    updating_frequency_kafka_sub: number;
+    topic_sub: string;
+    updating_frequency_sub: number;
+}
+interface DataCatalogDataRequestWithNull {
+    comments: string;
+    id: string | null;
+    data_catalog_data_offering_id: string;
+    status: string;
+    topic_kafka_sub: null;
+    updating_frequency_kafka_sub: number;
+    topic_sub: string;
+    updating_frequency_sub: number;
+
 }
 interface RequestBody {
     data_catalog_data_requests: DataCatalogDataRequest;
 }
-
-const body: RequestBody = {
-    data_catalog_data_requests: {
-        comments: "",
-        id: null,
-        data_catalog_data_offering_id: "",
-        status: "pending"
-    }
-};
 
 const NewSubscription = () => {
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const type = queryParams.get('type');
     const [data, setData] = useState<Data_catalog_data_offerings | null>(null);
-    const [modalMessage, setModalMessage] = useState('');
+    const [body, setBody] = useState<DataCatalogDataRequest | null>({
+        comments: "",
+        id: null,
+        data_catalog_data_offering_id: "",
+        status: "pending",
+        topic_kafka_sub: "",
+        updating_frequency_kafka_sub: 60,
+        topic_sub: "",
+        updating_frequency_sub: 60,
+    });
 
-    const handleChange = (name: keyof DataCatalogDataRequest, value: string) => {
-        setData(prevData => {
+    const handleChange = (name: keyof DataCatalogDataRequest, value: string | number) => {
+        if ((name === "topic_kafka_sub" || name === "topic_sub") && typeof value === "string") {
+            value = checkTopic(value, name === "topic_kafka_sub" ? "Kafka" : "Nats")
+        }
+        setBody(prevData => {
             if (prevData === null) {
                 return null;
             }
@@ -107,6 +131,7 @@ const NewSubscription = () => {
                     [name]: value
                 };
             }
+
             return prevData;
         });
     };
@@ -120,7 +145,7 @@ const NewSubscription = () => {
     });
 
     const handleOpenModal = (modalName: string) => {
-       
+
         setModalStates({ ...modalStates, [modalName]: true });
     };
 
@@ -128,17 +153,16 @@ const NewSubscription = () => {
         setModalStates({ ...modalStates, [modalName]: false });
     };
 
-
     const handleModalDataChange = (modalName: string, value: string) => {
         setFilterValuesFromModals({ ...ValuesFromModals, [modalName]: value });
         axiosWithInterceptorInstance.get<ApiReceiving>(`/dataset/my_offered_services/${value}`)
             .then(response => {
                 setData(response.data.data_catalog_data_offerings_obj);
+                handleChange("data_catalog_data_offering_id", response.data.data_catalog_data_offerings_obj.id);
             })
             .catch(error => {
                 console.error('Error fetching media:', error);
             });
-
     };
 
     useEffect(() => {
@@ -146,21 +170,20 @@ const NewSubscription = () => {
     }, [ValuesFromModals.Modal_id, modalStates.offeringModal]);
 
     async function saveRequest() {
-        if (data?.id) {
-            body.data_catalog_data_requests.data_catalog_data_offering_id = data?.id;
-        }
-
-        if (data?.comments) {
-            body.data_catalog_data_requests.comments = data?.comments;
-        }
-
-
-
         try {
-            console.log("creo subscription input :")
-            console.log(body)
-            const response = await axiosWithInterceptorInstance.post('/dataset/my_subscriptions', body);
-            window.location.href = `/mySubscriptions?type=${type}`
+            let bodyToSend = {}
+            bodyToSend = { "data_catalog_data_requests": body }
+            if (body?.topic_kafka_sub === "") {
+
+                const updatedBody: DataCatalogDataRequestWithNull = {
+                    ...body,
+                    topic_kafka_sub: null
+                };
+                bodyToSend = { "data_catalog_data_requests": updatedBody }
+
+            }
+            const response = await axiosWithInterceptorInstance.post('/dataset/my_subscriptions', bodyToSend);
+            window.location.href = `mySubscriptions?type=${type}`
         } catch (error) {
             console.error('Error saving data: ', error);
         }
@@ -184,7 +207,6 @@ const NewSubscription = () => {
                     </div>
                 </div>
             </div>
-
             <Card >
                 <ListGroup variant="flush">
                     <ListGroup.Item>
@@ -226,7 +248,7 @@ const NewSubscription = () => {
                         <Row form>
                             <Col md={6}>
                                 <FormGroup>
-                                    <Label for="serviceCode">Businnes object code</Label>
+                                    <Label for="serviceCode">Business object code</Label>
                                     <Form.Control
                                         type="text"
                                         value={data?.data_catalog_business_object_obj.code}
@@ -356,7 +378,52 @@ const NewSubscription = () => {
             </Card>
 
 
+            {(window as any)["env"]["Nats"]  &&<Card >
+                <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>NATS parameters</b></h3>
+                <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the NATS plugin</h6>
+                <ListGroup variant="flush">
+                    <ListGroup.Item>
+                        <Row form>
+                            <Col md={6}>
+                                <FormGroup>
+                                    <Label for="serviceCode">NATS topic</Label>
+                                    <Input type="text" name="topic_sub" id="topic_sub" placeholder="Enter NATS topic" value={body?.topic_sub} onChange={(e) => handleChange('topic_sub', e.target.value)} />
+                                </FormGroup>
+                            </Col>
+                            <Col md={6}>
+                                <FormGroup>
+                                    <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                                    <Input type="text" name="updating_frequency_sub" id="updating_frequency_sub" placeholder={String(body?.updating_frequency_sub)} value={data?.updating_frequency_sub} onChange={(e) => handleChange('updating_frequency_sub', Number(e.target.value))} />
+                                </FormGroup>
+                            </Col>
+                        </Row>
+                    </ListGroup.Item>
+                </ListGroup>
 
+            </Card>}
+            {(window as any)["env"]["Kafka"] && <Card >
+                <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}> <b>Kafka parameters</b></h3>
+                <h6 className="list-group-item-heading" style={{ paddingLeft: " 20px" }}>Select topic and updating frequency for the Kafka plugin</h6>
+                <ListGroup variant="flush">
+                    <ListGroup.Item>
+                        <Row form>
+                            <Col md={6}>
+                                <FormGroup>
+                                    <Label for="serviceCode">Kafka topic</Label>
+                                    <Input type="text" name="topic_kafka_sub" id="topic_kafka_sub" placeholder="Enter Kafka topic" value={body?.topic_kafka_sub} onChange={(e) => handleChange('topic_kafka_sub', e.target.value)} />
+                                </FormGroup>
+                            </Col>
+                            <Col md={6}>
+                                <FormGroup>
+                                    <Label for="serviceName">Updating Frequency (60 is the default value)</Label>
+                                    <Input type="text" name="updating_frequency_kafka_sub" id="updating_frequency_kafka_sub" placeholder={String(body?.updating_frequency_kafka_sub)} value={data?.updating_frequency_kafka_sub} onChange={(e) => handleChange('updating_frequency_kafka_sub', Number(e.target.value))} />
+                                </FormGroup>
+                            </Col>
+                        </Row>
+                    </ListGroup.Item>
+                </ListGroup>
+
+            </Card>}
 
             <Card >
                 <h3 className="list-group-item-heading" style={{ paddingLeft: "20px", paddingTop: "20px" }}><b>Comments</b></h3>
@@ -367,7 +434,7 @@ const NewSubscription = () => {
 
                         {data && <Form.Control
                             type="text"
-                            value={data?.comments}
+                            value={body?.comments}
                             aria-label="Disabled input example"
                             onChange={(e) => handleChange('comments', e.target.value)}
                         />}
@@ -378,10 +445,6 @@ const NewSubscription = () => {
                             onChange={(e) => handleChange('comments', e.target.value)}
                         />}
                     </ListGroup.Item>
-
-
-
-
                 </ListGroup>
             </Card>
             {modalStates.offeringModal && type && (

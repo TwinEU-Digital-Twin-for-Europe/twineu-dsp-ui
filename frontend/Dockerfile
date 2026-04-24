@@ -1,5 +1,5 @@
 # Stage 1
-FROM node:18.18.2-alpine AS build-stage
+FROM node:alpine AS build-stage
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
@@ -10,7 +10,7 @@ RUN npm run build
 # Stage 2 with nginx
 
 # nginx state for serving content
-FROM nginx:alpine
+FROM nginx:alpine-slim
 
 # Copy config
 COPY ./config/nginx.conf /etc/nginx/conf.d/ui-nginx.conf

@@ -152,7 +152,7 @@ const DetailService = () => {
 
         try {
             const response = await axiosWithInterceptorInstance.post('/dataset/requests_on_offered_services', removeObj(body));
-            window.location.href = '/requests'
+            window.location.href = 'requests'
         } catch (error) {
             console.error('Error saving data: ', error);
         }

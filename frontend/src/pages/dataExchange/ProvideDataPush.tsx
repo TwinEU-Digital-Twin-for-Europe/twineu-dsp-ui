@@ -555,7 +555,7 @@ const ProvideDataPush: React.FC = () => {
                     <div className="input-group" style={{ transform: "scale(0.8)" }}>
                       <button onClick={() => handleOpenModal('businnesObjectModal')} className="btn btn-outline-secondary" type="button" id="button-addon1">
                         <i className="fas fa-search"></i>
-                        Businnes object
+                        Business object
                       </button>
                       <input className="form-control" data-toggle="tooltip" data-placement="top" title={filterValuesFromModals.business_object_id.name} placeholder={filterValuesFromModals.business_object_id.name} aria-label="Example text with button addon" aria-describedby="button-addon1" />
                       <button onClick={() => cancelModalFilters('business_object_id')} className="btn btn-outline-secondary" type="button" id="button-addon1">

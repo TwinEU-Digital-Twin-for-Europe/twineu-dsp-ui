@@ -119,7 +119,7 @@ const UserDropdown = () => {
       FB.logout(() => {
         dispatch(setAuthentication(undefined));
         localStorage.removeItem('token');
-        navigate('/login');
+        navigate('login');
       });
     } else {
       dispatch(setAuthentication(undefined));
@@ -134,9 +134,11 @@ const UserDropdown = () => {
         });
       localStorage.removeItem('token');
       localStorage.removeItem('email');
+      localStorage.removeItem('uid');
+      localStorage.removeItem('username');
       delete axiosWithInterceptorInstance.defaults.headers.common["Authorization"];
       localStorage.removeItem('authentication');
-      navigate('/login');
+      navigate('login');
     }
 
   };
@@ -152,7 +154,7 @@ const UserDropdown = () => {
       <StyledSmallUserImage
         slot="button"
         /* src={authentication.profile.picture} */
-        fallbackSrc="/img/default-profile.png"
+        fallbackSrc={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
         alt="User"
         width={25}
         height={25}
@@ -162,7 +164,7 @@ const UserDropdown = () => {
         <UserHeader className=" bg-primary">
           <StyledBigUserImage
             /* src={authentication.profile.picture} */
-            fallbackSrc="/img/default-profile.png"
+            fallbackSrc={`${(window as any)["env"]["basePath"]}/img/default-profile.png`}
             alt="User"
             width={90}
             height={90}

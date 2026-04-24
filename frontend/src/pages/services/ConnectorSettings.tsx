@@ -163,33 +163,33 @@ const ConnectorSettings = () => {
                     <ListGroup.Item>
                         <Label for="id" >{appName} Api</Label>
                         <div className="row">
-                            <div className="col-9">
+                            <div className="col-7" data-toggle="tooltip" data-placement="top" title="Please insert the URL of the local API. It should be in the format http://localhost:port">
                                 <Form.Control
                                     type="text"
                                     value={data?.ed_api_url}
                                     onChange={(e) => handleChange('ed_api_url', e.target.value)}
                                 />
-
+                            
                             </div>
-                            <div className="col-1" style={{ marginLeft: "20px" }}>
-                                <button type="button" className="btn btn-primary" onClick={() => checkLocalApiST(data?.ed_api_url)}>Check</button>
+                            <div className="col" style={{ whiteSpace: 'nowrap'  }} >
+                                <button type="button" className="btn btn-primary" onClick={() => checkLocalApiST(data?.ed_api_url)}>Check local API</button>
                             </div>
-                             <div className="col" style={{ whiteSpace: 'nowrap'  }}>
-                                <button type="button" className="btn btn-primary" onClick={() => checkConnectorST(data?.ed_api_url)}>Check connector config</button>
-                            </div>
+                            
                         </div>
                         <Label for="id" style={{ paddingTop: " 18px" }} >Endpoint Connector Url</Label>
                         <div className="row" >
 
-                            <div className="col">
+                            <div className="col-7" data-toggle="tooltip" data-placement="top" title="Please enter the endpoint connector URL. It should be in the format http://localhost:port">
                                 <Form.Control
                                     type="text"
                                     value={data?.data_app_url}
                                     onChange={(e) => handleChange('data_app_url', e.target.value)}
                                 />
                             </div>
-                            
-                        </div>
+                            <div className="col" style={{ whiteSpace: 'nowrap'  }}>
+                                <button type="button" className="btn btn-primary" onClick={() => checkConnectorST(data?.ed_api_url)}>Check connector</button>
+                            </div>
+                        </div> 
                         {/* <Label for="id" style={{ paddingTop: " 18px" }} >Ecc Url</Label>
                         <div className="row" >
 

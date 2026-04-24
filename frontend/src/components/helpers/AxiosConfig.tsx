@@ -21,7 +21,7 @@ axiosWithInterceptorInstance.interceptors.response.use((response) => response, (
     localStorage.removeItem('email');
     localStorage.removeItem('authentication');
     unsetGlobalHeader();
-    window.location.href = '/login';
+    window.location.href = 'login';
     
   }
   if (error.response.status === 500) {
