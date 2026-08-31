@@ -70,6 +70,7 @@ const NotificationsDropdown = () => {
       return () => {
         if (unsubNotif) {
           unsubNotif();
+          setNotifications([]);	
         }
       };
     }

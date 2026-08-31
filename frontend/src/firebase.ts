@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, query, orderBy, onSnapshot, where, doc, updateDoc, serverTimestamp, limit,getCountFromServer } from "firebase/firestore";
+import { getFirestore, collection, query, orderBy, onSnapshot, where, doc, updateDoc, serverTimestamp, limit, getCountFromServer } from "firebase/firestore";
 import { getAuth, signInWithCustomToken, signOut } from "firebase/auth";
 import { INotification } from "./models/INotification";
 import axiosWithInterceptorInstance from "./components/helpers/AxiosConfig";
@@ -11,12 +11,13 @@ let auth: any = null;
 
 async function initFirebase(MW_token: string): Promise<void> {
 	//console.log("Initializing Firebase...");
-	if (app) return;
-	const configResponse = await axiosWithInterceptorInstance.get(`/dataset/onenet-settings/${(window as any)["env"]["appOnenetSettingsId"]}`);
-	const firebaseConfig = configResponse.data.onenet_settings_obj.notification_config;
-	app = initializeApp(JSON.parse(firebaseConfig));
-	db = getFirestore(app);
-	auth = getAuth(app);
+	if (!app) {
+		const configResponse = await axiosWithInterceptorInstance.get(`/dataset/onenet-settings/${(window as any)["env"]["appOnenetSettingsId"]}`);
+		const firebaseConfig = configResponse.data.onenet_settings_obj.notification_config;
+		app = initializeApp(JSON.parse(firebaseConfig));
+		db = getFirestore(app);
+		auth = getAuth(app);
+	}
 	const apiRetrieved = await RetrieveLocalApi();
 	const tokenResponse = await axiosWithInterceptorInstance.post(
 		`${apiRetrieved.ed_api_url}/notifications/auth/firebase-token`,
@@ -26,18 +27,6 @@ async function initFirebase(MW_token: string): Promise<void> {
 	await signInWithCustomToken(auth, tokenResponse.data.firebaseToken);
 }
 
-async function signInFB(MW_token: string) {
-	const apiRetrived = await RetrieveLocalApi()
-	const response = await axiosWithInterceptorInstance.post(`${apiRetrived.ed_api_url}/notifications/auth/firebase-token`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${MW_token}`,
-		},
-	});
-	const data = await response.data;
-	const userCredential = await signInWithCustomToken(auth, data.firebaseToken);
-}
 
 async function markNotificationAsRead(notification: INotification) {
 	if (!notification.read) {
@@ -55,7 +44,10 @@ async function markNotificationAsRead(notification: INotification) {
 
 
 async function signOutFB() {
-	await signOut(auth);
+	if (auth) {
+		await signOut(auth);
+	}
+
 }
 
 async function listenNotifications(callback: (items: any[]) => void) {
@@ -91,7 +83,6 @@ async function countNotifications(): Promise<Number> {
 const firabaseUtils =
 {
 	initFirebase,
-	signInFB,
 	listenNotifications,
 	markNotificationAsRead,
 	signOutFB,

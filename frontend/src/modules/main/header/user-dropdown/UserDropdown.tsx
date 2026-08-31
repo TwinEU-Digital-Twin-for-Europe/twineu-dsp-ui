@@ -6,8 +6,8 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { PfDropdown, PfImage } from '@profabric/react-components';
 import { setAuthentication } from '@app/store/reducers/auth';
-import axios from 'axios';
 import axiosWithInterceptorInstance from '@app/components/helpers/AxiosConfig';
+import firabaseUtils from '@app/firebase';
 const StyledSmallUserImage = styled(PfImage)`
   margin-top: 3px;
   --pf-box-shadow: 0 3px 6px #00000029, 0 3px 6px #0000003b !important;
@@ -132,12 +132,11 @@ const UserDropdown = () => {
         .catch(err => {
           console.log(err)
         });
-      localStorage.removeItem('token');
-      localStorage.removeItem('email');
-      localStorage.removeItem('uid');
-      localStorage.removeItem('username');
+      await firabaseUtils.signOutFB();
+      localStorage.clear();
+      
       delete axiosWithInterceptorInstance.defaults.headers.common["Authorization"];
-      localStorage.removeItem('authentication');
+      
       navigate('login');
     }
 
